@@ -11,7 +11,7 @@ function worker() {
     self: { location: { origin: 'http://localhost:8000' }, addEventListener: (name, fn) => { handlers[name] = fn; }, skipWaiting() {}, clients: { claim() {} } },
     caches: {
       open: async () => ({ addAll: async paths => installed.push(...paths) }),
-      keys: async () => ['another-app-cache', 'roundnote-v1', 'roundnote-v3-focused-ui'],
+      keys: async () => ['another-app-cache', 'roundnote-v1', 'roundnote-v4-analysis-history'],
       delete: async name => deleted.push(name),
       match: async request => request === './index.html' ? new Response('offline app') : undefined,
     },

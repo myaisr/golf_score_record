@@ -1,5 +1,5 @@
-const CACHE = 'roundnote-v3-focused-ui';
-const ASSETS = ['./', './index.html', './app.css', './app.js', './manifest.webmanifest', './icon-192.png', './icon-512.png'];
+const CACHE = 'roundnote-v4-analysis-history';
+const ASSETS = ['./', './index.html', './app.css', './roundnote-core.js', './app.js', './manifest.webmanifest', './icon-192.png', './icon-512.png'];
 self.addEventListener('install', event => {
   event.waitUntil(caches.open(CACHE).then(cache => cache.addAll(ASSETS)).then(() => self.skipWaiting()));
 });
