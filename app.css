@@ -160,3 +160,60 @@ button.matrix-cell { border: 0; min-height: 36px; background: #e8f1e6; color: #3
 @media (max-width: 560px) { .shell { padding: 0 12px; }.surface { padding: 15px; }.trend-grid { grid-template-columns: 1fr; }.trend-card { padding: 17px; }.kpi-grid { gap: 5px; }.kpi { padding: 12px 8px; }.kpi b { font-size: 21px; }.matrix { grid-template-columns: 45px repeat(9, minmax(0, 1fr)); gap: 2px; }.matrix-cell, .matrix-label { font-size: 9px; }.half-section { padding: 14px 10px; }.result-hero { padding: 19px; } }
 @media (max-width: 355px) { .surface { padding: 12px; }.hole-heading { gap: 6px; }.hole-picker { grid-template-columns: repeat(5, minmax(0, 1fr)); }.round-meta { grid-template-columns: 134px minmax(0, 1fr); gap: 7px; }.round-meta input { padding: 10px 8px; }.counter-heading h2 { font-size: 12px; }.matrix { grid-template-columns: 42px repeat(9, minmax(0, 1fr)); }.half-section { padding: 13px 8px; }.kpi span { font-size: 9px; } }
 @media (prefers-reduced-motion: no-preference) { button { transition: background .12s, border-color .12s; } }
+.tee-short { width: 100%; margin-top: 7px; }
+.club-choices { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; }
+.club-choices button { min-height: 46px; line-height: 1.5; }
+.app-message { padding: 12px; border: 1px solid #d4dfcf; border-radius: 9px; color: #506344; font-size: 12px; line-height: 1.7; overflow-wrap: anywhere; }
+.finish-gate { text-align: center; padding: 28px 20px; }
+.finish-gate h1 { font-size: 18px; margin: 0 0 12px; }
+.finish-gate p { margin: 0 0 25px; font-size: 12px; color: var(--muted); }
+.finish-gate .text-button { margin-top: 12px; }
+.result-halves { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: -2px 0 14px; }
+.result-halves>span { display: flex; align-items: baseline; gap: 10px; border: 1px solid var(--line); background: #fff; border-radius: 10px; padding: 13px; font-size: 11px; }
+.result-halves b { font-size: 22px; }
+.result-halves small { margin-left: auto; font-size: 10px; color: var(--muted); }
+.goal-gap { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin-bottom: 8px; padding: 12px 3px; font-size: 12px; color: var(--muted); }
+.goal-gap strong { font-size: 24px; }
+.good { color: #226b43; }.bad { color: #aa5e38; }.neutral { color: var(--muted); }
+.comparison-section { margin: 0 0 20px; }
+.scope-tabs { display: flex; gap: 5px; margin-bottom: 10px; }
+.scope-tabs button { flex: 1; min-height: 40px; border: 1px solid var(--line); border-radius: 8px; background: #fff; color: var(--muted); font-size: 12px; }
+.scope-tabs button.active { background: #e0eddf; color: #255d36; border-color: #a4c5a8; font-weight: 750; }
+.comparison-wrap { border: 1px solid var(--line); border-radius: 12px; overflow: hidden; background: #fff; }
+.comparison-table { width: 100%; border-collapse: collapse; table-layout: fixed; text-align: right; font-size: 12px; }
+.comparison-table th, .comparison-table td { padding: 13px 11px; border-bottom: 1px solid #e8eee5; line-height: 1.6; overflow-wrap: anywhere; }
+.comparison-table tr:last-child>* { border-bottom: 0; }
+.comparison-table th:first-child { width: 38%; text-align: left; }
+.comparison-table thead th { color: var(--muted); font-size: 10px; font-weight: 500; background: #edf3e9; }
+.comparison-table tbody th { font-size: 12px; font-weight: 600; }
+.comparison-table td:last-child { font-weight: 750; }
+.goals-panel h2 { margin: 0 0 18px; font-size: 14px; }
+.goals-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px 12px; }
+.goals-grid label { display: flex; flex-direction: column; justify-content: space-between; gap: 8px; font-size: 11px; color: var(--muted); line-height: 1.5; }
+.goals-grid input { width: 100%; min-width: 0; min-height: 44px; border: 1px solid var(--line); border-radius: 8px; padding: 9px 11px; color: #264d36; background: #fbfdf8; font-size: 16px; }
+.section-heading.compact { margin-top: 0; }
+.ob-summary { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.ob-summary span { font-size: 11px; color: var(--muted); }
+.ob-summary b { display: block; font-size: 23px; color: #244b32; margin-top: 8px; }
+.ob-directions { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin: 18px 0 4px; padding-top: 14px; border-top: 1px solid var(--line); }
+.ob-directions dt { font-size: 11px; color: var(--muted); }
+.ob-directions dd { margin: 6px 0 0; font-size: 17px; }
+.approach-analysis h2 { font-size: 13px; margin: 0 0 16px; }
+.approach-analysis>strong { font-size: 38px; color: #245b38; }
+.approach-analysis p { font-size: 12px; color: var(--muted); }
+.reference-metrics { margin-top: 18px; border-top: 1px solid var(--line); padding-top: 14px; }
+.reference-metrics span { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; font-size: 11px; color: var(--muted); margin: 9px 0; }
+.reference-metrics b { color: #32573d; font-size: 12px; }
+.reference-line { font-size: 11px; line-height: 1.7; color: var(--muted); margin: 12px 2px 20px; }
+.page-title { font-size: 16px; margin: 0; }
+.backup-actions { display: flex; gap: 8px; margin-bottom: 16px; }
+.backup-actions button { flex: 1; min-height: 44px; }
+.history-list { display: grid; gap: 8px; }
+.history-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; width: 100%; text-align: left; border: 1px solid var(--line); border-radius: 12px; background: #fff; padding: 15px; color: #31533b; }
+.history-row>span:first-child { min-width: 0; }
+.history-row strong { display: block; font-size: 13px; }
+.history-row small { display: block; font-size: 11px; color: var(--muted); overflow-wrap: anywhere; margin-top: 6px; }
+.history-row>span:last-child { flex-shrink: 0; font-size: 10px; color: var(--muted); }
+.empty-history { color: var(--muted); font-size: 12px; padding: 20px 0; }
+.export-page { margin: 0 0 30px; }.export-page h3 { color: #d7e6d6; font-size: 13px; font-weight: 600; }
+@media (max-width: 560px) { .comparison-table { font-size: 11px; }.comparison-table th, .comparison-table td { padding: 12px 6px; }.comparison-table tbody th { font-size: 11px; }.comparison-table th:first-child { width: 35%; } }

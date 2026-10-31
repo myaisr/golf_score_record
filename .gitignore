@@ -2,3 +2,17 @@
 Thumbs.db
 .vscode/
 *.log
+# Local round data (including files saved directly in the repository root).
+*.[jJ][sS][oO][nN]
+*.[xX][lL][sS]
+*.[xX][lL][sS][xXmMbB]
+*.xlsx
+*.xlsm
+*.xls
+__pycache__/
+*.pyc
+roundnote-backup-*.json
+roundnote-recovery-*.json
+outputs/
+backups/
+.qa/
