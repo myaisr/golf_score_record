@@ -6,6 +6,13 @@
   const LEGACY_KEY = isPreview ? 'roundnote-golf-ui-preview-v1' : 'roundnote-golf-v1';
   const { TEE, CLUBS, APPROACH } = Core;
   const FIELDS = ['long', 'short', 'putts', 'obTee', 'obLater'];
+  const TEE_CLUB_STYLES = {
+    driver: { label: 'ドライバー', color: '#2d6950', ink: '#fff' },
+    wood_ut: { label: 'ウッド・UT', color: '#8db79e', ink: '#193e2b' },
+    iron: { label: 'アイアン', color: '#b1a3cf', ink: '#43345f' },
+    wedge: { label: 'ウェッジ', color: '#d9c69c', ink: '#51452b' },
+    unknown: { label: 'クラブ未記録', color: '#a6b1ab', ink: '#263f30' },
+  };
   const today = () => {
     const date = new Date();
     return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
@@ -43,7 +50,7 @@
   let saveStatus = '';
   let storageBlocked = false;
   let unreadableRaw = null;
-  const ui = { review: false, holes: false, obHelp: false, goals: false, goalDraft: null, scope: 'all', message: '' };
+  const ui = { review: false, holes: false, obHelp: false, goals: false, goalDraft: null, scope: 'all', message: '', teeRoundId: null, teeClubs: Object.keys(CLUBS) };
   try {
     const currentRaw = localStorage.getItem(KEY);
     const raw = currentRaw || localStorage.getItem(LEGACY_KEY);
@@ -161,10 +168,56 @@
   function shotStats() {
     return sums(state.holes);
   }
+  function teeShotData() {
+    if (ui.teeRoundId !== state.id) {
+      ui.teeRoundId = state.id;
+      ui.teeClubs = Object.keys(CLUBS);
+    }
+    return Core.teeShotBreakdown(state.holes, ui.teeClubs);
+  }
+  function teeChart(data) {
+    if (!ui.teeClubs.length) return '<p class="tee-chart-empty" role="status">表示するクラブを選択してください。</p>';
+    if (!data.total) return '<p class="tee-chart-empty" role="status">選択したクラブの方向記録はありません。</p>';
+    const description = data.series.flatMap(series => Object.entries(series.counts).filter(([, n]) => n.safe + n.ob).map(([direction, n]) => `${TEE_CLUB_STYLES[series.key].label}・${TEE[direction]}：OBなし${n.safe}H、OBあり${n.ob}H`)).join('。');
+    let svg = `<svg viewBox="0 0 350 196" role="img" aria-labelledby="tee-chart-title tee-chart-description" data-axis-max="${data.axisMax}"><title id="tee-chart-title">選択したクラブのティー方向・対象${data.total}H</title><desc id="tee-chart-description">${description}。OBはティーショットのみ、同一ホールの複数OBも1Hとして集計。</desc><defs><pattern id="tee-ob-hatch" width="8" height="8" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><path d="M0 0V8" stroke="#fff" stroke-opacity=".66" stroke-width="3"/></pattern></defs>`;
+    for (let tick = 0; tick <= data.axisMax; tick += data.axisStep) {
+      const x = 65 + tick / data.axisMax * 240;
+      svg += `<line x1="${x}" y1="22" x2="${x}" y2="162" stroke="#e4ebe1"/><text x="${x}" y="13" text-anchor="middle" fill="#87988b" font-size="10">${tick}</text>`;
+    }
+    svg += '<text x="349" y="13" text-anchor="end" fill="#87988b" font-size="10">H</text>';
+    Object.entries(TEE).forEach(([direction, label], i) => {
+      const y = 30 + i * 52, n = data.directions[direction];
+      svg += `<text x="0" y="${y + 19}" fill="#4c6656" font-size="12" font-weight="600">${label}</text><text x="349" y="${y + 19}" text-anchor="end" fill="#193e2b" font-size="13" font-weight="750">${n.total}<tspan font-size="10" font-weight="500">H</tspan></text>`;
+      let x = 65;
+      data.series.forEach(series => {
+        const style = TEE_CLUB_STYLES[series.key];
+        ['safe', 'ob'].forEach(kind => {
+          const count = series.counts[direction][kind];
+          if (!count) return;
+          const width = count / data.axisMax * 240;
+          svg += `<g data-tee-segment="${series.key}" data-direction="${direction}" data-ob="${kind === 'ob'}" data-count="${count}"><title>${style.label}・${label}・OB${kind === 'ob' ? 'あり' : 'なし'} ${count}H</title><rect x="${x}" y="${y}" width="${width}" height="28" rx="3" fill="${style.color}"/>`;
+          if (kind === 'ob') svg += `<rect x="${x}" y="${y}" width="${width}" height="28" rx="3" fill="url(#tee-ob-hatch)"/>`;
+          svg += `<rect x="${x}" y="${y}" width="${width}" height="28" rx="3" fill="none" stroke="#fff" stroke-width="1.5"/><text x="${x + width / 2}" y="${y + 18}" text-anchor="middle" font-size="11" font-weight="750" fill="${style.ink}" stroke="${style.color}" stroke-width="2" paint-order="stroke">${count}</text></g>`;
+          x += width;
+        });
+      });
+      svg += `<text x="305" y="${y + 43}" text-anchor="end" fill="${n.ob ? '#a16132' : '#8e9e91'}" font-size="10" font-weight="600">OB ${n.ob}H</text>`;
+    });
+    return svg + '</svg>';
+  }
+  function teeChartView() {
+    const data = teeShotData(), all = ui.teeClubs.length === Object.keys(CLUBS).length;
+    const unknown = data.unknownClub ? `<p class="tee-missing"><i style="--club:#a6b1ab"></i>クラブ未記録 ${data.unknownClub}H${all ? 'を灰色で表示' : 'は「すべて」で表示'}</p>` : '';
+    const missing = data.missingDirection ? `<p class="tee-missing">方向未記録 ${data.missingDirection}H（うちOBあり${data.missingDirectionOB}H）はグラフ対象外</p>` : '';
+    return `<article class="surface trend-card tee-chart-card"><h3>ティーショットの方向<small>対象 ${data.total}H</small></h3><div class="tee-filter-heading"><span>クラブを選択（複数可）</span><button data-tee-filter="all" class="tee-select-all ${all ? 'active' : ''}" aria-pressed="${all}">すべて</button></div><div class="tee-filters" role="group" aria-label="表示するティーショットのクラブ">${Object.keys(CLUBS).map(key => {
+      const active = ui.teeClubs.includes(key), style = TEE_CLUB_STYLES[key];
+      return `<button class="tee-filter ${active ? 'active' : ''}" style="--club:${style.color}" data-tee-filter="${key}" aria-pressed="${active}"><i aria-hidden="true"></i><span>${style.label}</span><span class="tee-check" aria-hidden="true">${active ? '✓' : '＋'}</span></button>`;
+    }).join('')}</div><div class="tee-ob-legend"><i aria-hidden="true"></i><span>斜線＝OBあり / 斜線なし＝OBなし</span></div><div class="tee-chart">${teeChart(data)}</div>${unknown}${missing}<p class="tee-chart-note">数字は選択したクラブのホール数。横軸の目盛りは固定。<br>ティーOBのみを判定し、複数OBも1Hとして数えます。</p></article>`;
+  }
   function trendView() {
     const stats = shotStats();
     const card = (title, total, labels, counts, multi = false) => `<article class="surface trend-card"><h3>${title}<small>${multi ? '複数選択 · ' : ''}記録 ${total}H</small></h3>${total ? Object.entries(labels).map(([key, label]) => `<div class="trend-row ${key === 'none' || key === 'good' ? 'good' : ''}"><span>${label}</span><span class="trend-track"><i style="width:${counts[key] / total * 100}%"></i></span><b>${counts[key]}H</b></div>`).join('') : '<div class="trend-empty">—</div>'}</article>`;
-    return `<section><div class="section-heading"><h2>ショットの傾向</h2></div><div class="trend-grid">${card('ティーショットの方向', stats.teeDirectionRecorded, TEE, stats.teeDirection)}${card('50y以内の記録', stats.approachRecorded, { none: 'ミスなし', ...APPROACH }, stats.approachNotes, true)}</div><p class="reference-line">ティーショットのショート ${stats.teeShortCount}H / 記録${stats.teeShortRecorded}H（${rate(stats.teeShortRate)}）</p></section>`;
+    return `<section><div class="section-heading"><h2>ショットの傾向</h2></div><div class="trend-grid">${teeChartView()}${card('50y以内の記録', stats.approachRecorded, { none: 'ミスなし', ...APPROACH }, stats.approachNotes, true)}</div><p class="reference-line">ティーショットのショート ${stats.teeShortCount}H / 記録${stats.teeShortRecorded}H（${rate(stats.teeShortRate)}）</p></section>`;
   }
   function historyView() {
     const rounds = snapshot().rounds.filter(r => Core.hasRoundData(r)).sort((a, b) => b.date.localeCompare(a.date) || Date.parse(b.updatedAt) - Date.parse(a.updatedAt));
@@ -256,6 +309,11 @@
   elem.addEventListener('click', e => {
     const button = e.target.closest('button'); if (!button || button.disabled) return;
     const d = button.dataset, h = state.holes[state.active];
+    if (state.finished && (d.teeFilter === 'all' || Object.hasOwn(CLUBS, d.teeFilter))) {
+      teeShotData();
+      ui.teeClubs = d.teeFilter === 'all' ? Object.keys(CLUBS) : ui.teeClubs.includes(d.teeFilter) ? ui.teeClubs.filter(key => key !== d.teeFilter) : [...ui.teeClubs, d.teeFilter];
+      render(); return;
+    }
     if (['input', 'result', 'history'].includes(d.view)) { state.view = d.view; ui.goals = false; ui.message = ''; save(false); render(); window.scrollTo(0, 0); return; }
     if (d.round) {
       const round = snapshot().rounds.find(r => r.id === d.round);
@@ -456,8 +514,49 @@
       if (!total) { text('—', x + 24, 1400, 24, muted); return; }
       Object.entries(labels).forEach(([key, label], i) => { text(label, x + 24, 1391 + i * 26, 21, muted); text(`${counts[key]}H`, x + 524, 1391 + i * 26, 21, green, 750, 'right'); });
     }
-    trend(36, 'ティーショット', stats.teeDirectionRecorded, TEE, stats.teeDirection);
-    text(`ショート ${stats.teeShortCount}H / ${rate(stats.teeShortRate)}`, 60, 1525, 23, green, 700);
+    const tee = teeShotData();
+    rect(36, 1290, 552, 280, '#fff');
+    text('ティーショットの方向', 60, 1323, 23, ink, 800);
+    text(`対象 ${tee.total}H`, 564, 1323, 20, muted, 500, 'right');
+    Object.keys(CLUBS).forEach((key, i) => {
+      const style = TEE_CLUB_STYLES[key], selected = ui.teeClubs.includes(key);
+      const x = 60 + i % 2 * 248, y = 1352 + Math.floor(i / 2) * 26;
+      g.fillStyle = selected ? style.color : '#e4e9e1'; g.fillRect(x, y - 15, 14, 14);
+      text(style.label, x + 23, y, 20, selected ? ink : muted, 500, 'left', 219);
+    });
+    text(tee.unknownClub ? `クラブ未記録${tee.unknownClub}H${ui.teeClubs.length === 4 ? 'は灰色' : 'は対象外'}` : `横軸 0〜${tee.axisMax}H`, 60, 1405, 20, muted, 500, 'left', 330);
+    text(`全体ショート ${stats.teeShortCount}H`, 564, 1405, 20, green, 600, 'right');
+    if (tee.total) {
+      Object.entries(TEE).forEach(([direction, label], i) => {
+        const y = 1424 + i * 38, n = tee.directions[direction];
+        text(label, 60, y + 17, 20, muted, 600, 'left', 84);
+        let x = 152;
+        tee.series.forEach(series => {
+          const style = TEE_CLUB_STYLES[series.key];
+          ['safe', 'ob'].forEach(kind => {
+            const count = series.counts[direction][kind];
+            if (!count) return;
+            const width = count / tee.axisMax * 316;
+            g.fillStyle = style.color; g.fillRect(x, y, width, 22);
+            if (kind === 'ob') {
+              g.save(); g.beginPath(); g.rect(x, y, width, 22); g.clip();
+              g.strokeStyle = '#ffffffa6'; g.lineWidth = 3;
+              for (let offset = -22; offset < width; offset += 10) {
+                g.beginPath(); g.moveTo(x + offset, y + 22); g.lineTo(x + offset + 22, y); g.stroke();
+              }
+              g.restore();
+            }
+            text(count, x + width / 2, y + 18, 20, style.ink, 700, 'center', width);
+            x += width;
+          });
+        });
+        text(`${n.total}H`, 564, y + 17, 20, ink, 700, 'right');
+        text(`OB ${n.ob}H`, 564, y + 36, 20, n.ob ? '#a16132' : muted, 500, 'right');
+      });
+    } else {
+      text(ui.teeClubs.length ? '方向の記録なし' : 'クラブの選択なし', 60, 1460, 23, muted);
+    }
+    text(`斜線=OBあり / 方向未記録${tee.missingDirection}H`, 60, 1558, 20, muted, 500, 'left', 500);
     trend(612, '50y以内の記録（複数選択）', stats.approachRecorded, { none: 'ミスなし', ...APPROACH }, stats.approachNotes);
     return canvas.toDataURL('image/png');
   }

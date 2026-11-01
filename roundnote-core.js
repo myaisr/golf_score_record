@@ -229,6 +229,32 @@
       approachNotes: { none: approachNotesHoles.filter(h => h.approach.length === 0).length, ...Object.fromEntries(NOTE_KEYS.map(key => [key, approachNotesHoles.filter(h => h.approach.includes(key)).length])) } };
   }
 
+  function teeShotBreakdown(values, selectedClubs = Object.keys(CLUBS)) {
+    const holes = (Array.isArray(values) ? values : []).map(normalizeHole);
+    const selected = new Set(selectedClubs.filter(key => Object.hasOwn(CLUBS, key)));
+    const all = selected.size === Object.keys(CLUBS).length;
+    const included = holes.filter(h => selected.has(h.teeClub) || (all && h.teeClub === null));
+    const recorded = included.filter(h => h.tee !== null);
+    const directions = Object.fromEntries(DIRECTION_KEYS.map(key => [key, { total: 0, ob: 0 }]));
+    const series = [...Object.keys(CLUBS).filter(key => selected.has(key)), ...(all ? ['unknown'] : [])].map(key => ({ key,
+      counts: Object.fromEntries(DIRECTION_KEYS.map(direction => [direction, { safe: 0, ob: 0 }])) }));
+    for (const h of recorded) {
+      const bucket = series.find(s => s.key === (h.teeClub || 'unknown')).counts[h.tee];
+      const ob = h.obTee > 0;
+      bucket[ob ? 'ob' : 'safe']++;
+      directions[h.tee].total++;
+      if (ob) directions[h.tee].ob++;
+    }
+    // The scale includes all clubs, so filtering never changes the unit length.
+    const maxDirection = Math.max(0, ...DIRECTION_KEYS.map(key => holes.filter(h => h.tee === key).length));
+    const axisStep = Math.max(2, Math.ceil(maxDirection / 10) * 2);
+    const axisMax = Math.max(axisStep, Math.ceil(maxDirection / axisStep) * axisStep);
+    const missingDirection = included.filter(h => h.tee === null && started(h));
+    return { series, directions, total: recorded.length, axisMax, axisStep,
+      unknownClub: holes.filter(h => h.tee !== null && h.teeClub === null).length,
+      missingDirection: missingDirection.length, missingDirectionOB: missingDirection.filter(h => h.obTee > 0).length };
+  }
+
   function compare(holes, goals, scope = 'all') {
     const g = normalizeGoals(goals), selected = scope === 'out' ? holes.slice(0, 9) : scope === 'in' ? holes.slice(9, 18) : holes;
     const a = analyze(selected), expected = scope === 'all' ? 18 : 9, half = scope !== 'all';
@@ -249,5 +275,5 @@
   }
 
   return Object.freeze({ SCHEMA_VERSION, DEFAULT_GOALS, DEFAULT_COURSE_NAMES, normalizeCourseNames, TEE, CLUBS, APPROACH, blankHole, newRound, normalizeHole, normalizeGoals,
-    migrate, validateImport, mergeDatabases, analyze, compare, score, onCount, bogeyOn, started, hasRoundData });
+    migrate, validateImport, mergeDatabases, analyze, teeShotBreakdown, compare, score, onCount, bogeyOn, started, hasRoundData });
 });

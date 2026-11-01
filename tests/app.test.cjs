@@ -96,6 +96,72 @@ function assertNoRoundTotals(markup) {
   assert.doesNotMatch(markup, /100切りまで|トータル|総スコア<\/|目標と実績/);
 }
 
+function teeChartRound() {
+  const clubs = [['driver', [[1, 1], [4, 0], [1, 2]]], ['wood_ut', [[1, 0], [2, 0], [0, 1]]],
+    ['iron', [[0, 0], [3, 0], [1, 0]]], ['wedge', [[0, 0], [1, 0], [0, 0]]]];
+  const holes = [];
+  for (const [teeClub, directions] of clubs) directions.forEach((counts, i) => counts.forEach((n, ob) => {
+    for (let j = 0; j < n; j++) holes.push(hole({ teeClub, tee: ['left', 'straight', 'right'][i], obTee: ob ? 2 : 0 }));
+  }));
+  return completeRound({ finished: true, holes });
+}
+
+test('tee club filters update one chart with a fixed scale without editing the saved round', () => {
+  const app = openApp({ storage: stored(database(teeChartRound())) }); app.click({ view: 'result' });
+  const original = app.storage.get(previewKey);
+  assert.match(app.markup(), /対象 18H/); assert.match(app.markup(), /data-axis-max="10"/);
+  for (const key of ['wood_ut', 'iron', 'wedge']) app.click({ teeFilter: key });
+  assert.match(app.markup(), /対象 9H/); assert.match(app.markup(), /data-axis-max="10"/);
+  assert.doesNotMatch(app.markup(), /data-tee-segment="(?:wood_ut|iron|wedge)"/);
+  assert.match(app.markup(), /data-tee-filter="driver" aria-pressed="true"/);
+  assert.match(app.markup(), /data-tee-filter="wood_ut" aria-pressed="false"/);
+  assert.equal((app.markup().match(/id="tee-chart-title"/g) || []).length, 1);
+  app.click({ teeFilter: 'wood_ut' }); assert.match(app.markup(), /対象 13H/);
+  app.click({ teeFilter: 'all' }); assert.match(app.markup(), /対象 18H/);
+  for (const key of Object.keys(Core.CLUBS)) app.click({ teeFilter: key });
+  assert.match(app.markup(), /表示するクラブを選択してください/);
+  assert.doesNotMatch(app.markup(), /data-tee-segment=/);
+  assert.equal(app.storage.get(previewKey), original);
+  app.click({ teeFilter: 'all' }); assert.match(app.markup(), /対象 18H/);
+});
+
+test('tee filters persist across result scope changes and reset when switching rounds', () => {
+  const first = teeChartRound(), second = completeRound({ id: 'other-round', finished: true });
+  const app = openApp({ storage: stored(database(first, [second])) }); app.click({ view: 'result' });
+  for (const key of ['wood_ut', 'iron', 'wedge']) app.click({ teeFilter: key });
+  app.click({ scope: 'out' }); assert.match(app.markup(), /対象 9H/);
+  app.click({ round: 'other-round' });
+  assert.match(app.markup(), /data-tee-filter="all"[^>]*aria-pressed="true"/);
+  assert.match(app.markup(), /選択したクラブの方向記録はありません/);
+  app.click({ round: first.id }); assert.match(app.markup(), /対象 18H/);
+});
+
+test('tee chart keeps unknown clubs visible and explains missing directions', () => {
+  const holes = [hole({ tee: 'left', obTee: 2 }), hole({ teeClub: 'driver', tee: 'right', obLater: 2 }),
+    hole({ teeClub: 'driver', obTee: 1 }), ...Array.from({ length: 15 }, () => Core.blankHole())];
+  const app = openApp({ storage: stored(database(completeRound({ finished: true, holes }))) }); app.click({ view: 'result' });
+  assert.match(app.markup(), /data-tee-segment="unknown" data-direction="left" data-ob="true" data-count="1"/);
+  assert.match(app.markup(), /data-tee-segment="driver" data-direction="right" data-ob="false" data-count="1"/);
+  assert.match(app.markup(), /クラブ未記録 1Hを灰色で表示/);
+  assert.match(app.markup(), /方向未記録 1H（うちOBあり1H）/);
+  for (const key of ['wood_ut', 'iron', 'wedge']) app.click({ teeFilter: key });
+  assert.match(app.markup(), /クラブ未記録 1Hは「すべて」で表示/);
+  assert.doesNotMatch(app.markup(), /data-tee-segment="unknown"/);
+});
+
+test('scorecard PNG exports the current club filter and the same tee-OB hole totals', () => {
+  const app = openApp({ storage: stored(database(teeChartRound())) }); app.click({ view: 'result' });
+  for (const key of ['wood_ut', 'iron', 'wedge']) app.click({ teeFilter: key });
+  app.click({ action: 'export' });
+  const canvas = app.canvases[1];
+  const textAt = (x, y) => canvas.draws.find(draw => draw.x === x && draw.y === y)?.value;
+  assert.equal(textAt(564, 1323), '対象 9H');
+  assert.deepEqual([1441, 1479, 1517].map(y => textAt(564, y)), ['2H', '4H', '3H']);
+  assert.deepEqual([1460, 1498, 1536].map(y => textAt(564, y)), ['OB 1H', 'OB 0H', 'OB 2H']);
+  const chartFills = canvas.fills.filter(fill => fill.y >= 1424 && fill.y <= 1500 && fill.height === 22);
+  assert.ok(chartFills.length > 0); assert.ok(chartFills.every(fill => fill.color === '#2d6950'));
+});
+
 // Input rules and corrections.
 test('course labels persist per round, safely render across results and PNGs, and restore from JSON', async () => {
   const app = openApp({ storage: stored(database(completeRound())) });

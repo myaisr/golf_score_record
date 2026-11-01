@@ -146,6 +146,24 @@ button.matrix-cell { border: 0; min-height: 36px; background: #e8f1e6; color: #3
 .trend-track i { display: block; height: 100%; border-radius: inherit; background: #94b69b; }
 .trend-row.good i { background: #34794e; }
 .trend-empty { color: #97a398; font-size: 12px; padding: 8px 0; }
+.tee-chart-card h3 { margin-bottom: 17px; }
+.tee-filter-heading { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: 10px; color: var(--muted); margin-bottom: 9px; }
+.tee-select-all { min-height: 32px; padding: 5px 12px; border: 1px solid #ceddce; border-radius: 6px; background: #fff; color: #53735c; font: inherit; font-size: 11px; font-weight: 650; }
+.tee-select-all.active { background: #28684c; border-color: #28684c; color: #fff; }
+.tee-filters { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 7px; margin-bottom: 13px; }
+.tee-filter { display: flex; align-items: center; gap: 6px; min-width: 0; min-height: 40px; padding: 7px 8px; border: 1px solid #dfe7dd; border-radius: 8px; background: #fff; color: #718379; font: inherit; font-size: 11px; text-align: left; }
+.tee-filter i, .tee-missing i { display: inline-block; flex-shrink: 0; width: 12px; height: 12px; border-radius: 3px; background: var(--club); }
+.tee-filter i { opacity: .35; }
+.tee-filter.active { background: #f3f7f1; background: color-mix(in srgb, var(--club) 10%, white); border-color: var(--club); color: #284e36; font-weight: 650; }
+.tee-filter.active i { opacity: 1; }
+.tee-check { margin-left: auto; }
+.tee-filter.active .tee-check { color: #30634b; }
+.tee-ob-legend { display: flex; align-items: center; gap: 7px; color: var(--muted); font-size: 10px; margin-bottom: 14px; padding-bottom: 13px; border-bottom: 1px solid #edf1eb; }
+.tee-ob-legend i { flex-shrink: 0; width: 22px; height: 14px; border-radius: 3px; background: repeating-linear-gradient(135deg, #ffffffa6 0 2px, transparent 2px 7px), #2d6950; }
+.tee-chart svg { display: block; width: 100%; height: auto; }
+.tee-chart-empty { display: grid; place-items: center; min-height: 150px; margin: 0; font-size: 12px; color: var(--muted); }
+.tee-missing { display: flex; align-items: center; gap: 5px; font-size: 10px; line-height: 1.7; color: var(--muted); margin: 8px 0; }
+.tee-chart-note { padding-top: 13px; margin: 4px 0 0; border-top: 1px solid #edf1eb; font-size: 10px; line-height: 1.8; color: var(--muted); }
 .result-actions { display: flex; gap: 8px; margin-top: 22px; }
 .result-actions .primary { flex: 1; }
 .secondary { min-height: 50px; padding: 12px 16px; background: #fff; border: 1px solid var(--line); border-radius: 12px; color: #3e6649; font-size: 12px; }
