@@ -17,7 +17,7 @@ const database = (current, other = [], goals = {}) => ({ schemaVersion: 2, curre
 const stored = (value, preview = true) => new Map([[preview ? previewKey : normalKey, JSON.stringify(value)]]);
 
 // Run the real browser handlers and persisted schema, with only the browser surface stubbed.
-function openApp({ preview = true, storage = new Map(), storageFails = false, confirmResult = true } = {}) {
+function openApp({ preview = true, storage = new Map(), storageFails = false, confirmResult = true, navigator: browserNavigator = {}, fileConstructor = require('node:buffer').File } = {}) {
   const handlers = {}, overlayHandlers = {}, nodes = new Map(), canvases = [], downloads = [], blobs = new Map(), prompts = [];
   let document;
   function node(id = '') {
@@ -41,7 +41,7 @@ function openApp({ preview = true, storage = new Map(), storageFails = false, co
       measureText(value) { const size = Number(String(context2d.font).match(/(\d+)px/)?.[1] || 20); return { width: String(value).length * size * .55 }; },
     }, { get: (target, key) => target[key] || (() => {}) });
     canvas.getContext = () => context2d;
-    canvas.toDataURL = () => `data:image/png;base64,preview-${canvases.indexOf(canvas)}`;
+    canvas.toDataURL = () => `data:image/png;base64,${Buffer.from([137, 80, 78, 71, 13, 10, 26, 10, canvases.indexOf(canvas)]).toString('base64')}`;
     canvases.push(canvas);
     return canvas;
   }
@@ -59,7 +59,7 @@ function openApp({ preview = true, storage = new Map(), storageFails = false, co
     document, RoundnoteCore: Core,
     localStorage: { getItem: key => storage.get(key), setItem(key, value) { if (storageFails) throw new Error('Quota exceeded'); storage.set(key, value); } },
     location: { search: preview ? '?preview=1' : '', protocol: 'http:' },
-    URLSearchParams, URL: TestURL, Blob, navigator: {}, window: { scrollTo() {} },
+    URLSearchParams, URL: TestURL, Blob, File: fileConstructor, atob: value => Buffer.from(value, 'base64').toString('binary'), navigator: browserNavigator, window: { scrollTo() {} },
     confirm(message) { prompts.push(message); return confirmResult; },
     alert(message) { prompts.push(message); },
     setTimeout: fn => { fn(); return 1; }, clearTimeout() {},
@@ -68,6 +68,7 @@ function openApp({ preview = true, storage = new Map(), storageFails = false, co
   function persisted() { const value = storage.get(preview ? previewKey : normalKey); return value ? JSON.parse(value) : null; }
   return {
     click: dataset => handlers.click({ target: { closest: () => ({ dataset }) }, preventDefault() {} }),
+    overlayClick: dataset => overlayHandlers.click?.({ target: { closest: () => ({ dataset }) } }),
     input: target => handlers.input({ target }),
     change: target => handlers.change?.({ target }),
     async import(value, size) {
@@ -524,6 +525,86 @@ test('the 2000-round limit blocks a new round without changing the current selec
 });
 
 // Keep two readable PNG pages, rather than squeezing analysis into the original scorecard.
+test('native image save passes a prepared PNG file directly from the tap, with no URL or text', async () => {
+  const shared = [];
+  const app = openApp({ storage: stored(database(completeRound({ finished: true }))), navigator: {
+    canShare: ({ files }) => files.length === 1 && files[0].type === 'image/png',
+    share: data => { shared.push(data); return Promise.resolve(); },
+  } });
+  app.click({ view: 'result' }); app.click({ action: 'export' });
+  assert.equal(shared.length, 0, 'preview opening does not send anything');
+  assert.match(app.overlayMarkup(), /保存メニューを開く/);
+  assert.match(app.overlayMarkup(), /画像を保存/);
+  assert.match(app.overlayMarkup(), /PNGをダウンロード/);
+  for (const index of [0, 1]) {
+    const pending = app.overlayClick({ saveImage: String(index) });
+    assert.equal(shared.length, index + 1, 'share starts synchronously within the tap');
+    await pending;
+    const data = shared[index], file = data.files[0];
+    assert.deepEqual(Object.keys(data), ['files']);
+    assert.equal(file.type, 'image/png');
+    assert.equal(file.name, `golf-round-2026-11-01-${index ? 'scorecard' : 'analysis'}.png`);
+    assert.deepEqual([...new Uint8Array(await file.arrayBuffer())], [137, 80, 78, 71, 13, 10, 26, 10, index]);
+    assert.equal(app.nodes.get(`image-save-status-${index}`).textContent, '', 'menu completion is not reported as a photo-save confirmation');
+  }
+  assert.equal(app.downloads.length, 0);
+});
+
+test('unsupported or throwing file-sharing capabilities retain two previews, long-press help, and downloads', () => {
+  for (const options of [
+    {},
+    { navigator: { canShare: () => false, share: () => assert.fail('unsupported share') } },
+    { navigator: { canShare: () => { throw new Error('blocked'); }, share: () => assert.fail('blocked share') } },
+    { navigator: { share: () => assert.fail('no file support') } },
+    { navigator: { canShare: () => true, share: () => assert.fail('File unavailable') }, fileConstructor: null },
+  ]) {
+    const app = openApp({ storage: stored(database(completeRound({ finished: true }))), ...options });
+    app.click({ view: 'result' }); app.click({ action: 'export' });
+    assert.doesNotMatch(app.overlayMarkup(), /data-save-image/);
+    assert.match(app.overlayMarkup(), /長押し/);
+    assert.equal((app.overlayMarkup().match(/<img /g) || []).length, 2);
+    assert.equal((app.overlayMarkup().match(/download="golf-round-[^"]+\.png"/g) || []).length, 2);
+    assert.equal(app.downloads.length, 0);
+  }
+});
+
+test('cancelled image saving is silent, failure shows a local fallback, and retry works', async () => {
+  let failure = { name: 'AbortError' }, count = 0;
+  const app = openApp({ storage: stored(database(completeRound({ finished: true }))), navigator: {
+    canShare: () => true,
+    share: () => { count++; return failure ? Promise.reject(failure) : Promise.resolve(); },
+  } });
+  app.click({ view: 'result' }); app.click({ action: 'export' });
+  await app.overlayClick({ saveImage: '1' });
+  assert.equal(app.nodes.get('image-save-status-1').textContent, '');
+  failure = { name: 'NotAllowedError' };
+  await app.overlayClick({ saveImage: '1' });
+  assert.match(app.nodes.get('image-save-status-1').textContent, /長押し.*PNGをダウンロード/);
+  failure = null;
+  await app.overlayClick({ saveImage: '1' });
+  assert.equal(app.nodes.get('image-save-status-1').textContent, '');
+  assert.equal(count, 3);
+  assert.equal(app.downloads.length, 0, 'cancelling never triggers an unwanted download');
+});
+
+test('a late native-menu failure cannot change a reopened preview, and closing clears files', async () => {
+  let rejectShare, count = 0;
+  const app = openApp({ storage: stored(database(completeRound({ finished: true }))), navigator: {
+    canShare: () => true,
+    share: () => { count++; return new Promise((_, reject) => { rejectShare = reject; }); },
+  } });
+  app.click({ view: 'result' }); app.click({ action: 'export' });
+  const pending = app.overlayClick({ saveImage: '0' });
+  app.nodes.get('close-modal').handlers.click();
+  await app.overlayClick({ saveImage: '0' });
+  assert.equal(count, 1);
+  app.click({ action: 'export' });
+  rejectShare({ name: 'NotAllowedError' });
+  await pending;
+  assert.equal(app.nodes.get('image-save-status-0').textContent, '');
+  assert.match(app.overlayMarkup(), /data-save-image="0"/);
+});
+
 test('completed-round PNG export preserves scorecard detail and adds target analysis in two bounded images', () => {
   const fixture = completeRound({ finished: true, holes: Array.from({ length: 18 }, (_, i) => hole({ tee: i % 2 ? 'right' : 'left', teeShort: i % 3 === 0, obTee: i === 0 ? 1 : 0, short: i % 4 === 0 ? 2 : 1 })) });
   const app = openApp({ storage: stored(database(fixture)) }); app.click({ view: 'result' }); app.click({ action: 'export' });

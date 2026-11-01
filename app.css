@@ -155,7 +155,10 @@ button.matrix-cell { border: 0; min-height: 36px; background: #e8f1e6; color: #3
 .overlay-head button { color: #fff; background: #ffffff10; border: 1px solid #adc5af; border-radius: 8px; min-height: 44px; padding: 10px 15px; font-size: 12px; }
 .overlay img { display: block; width: 100%; height: auto; border-radius: 7px; }
 .overlay-footer { margin-top: 13px; }
-.overlay-footer a { display: block; text-align: center; background: #e0f0df; color: #254c2e; border-radius: 10px; padding: 14px; text-decoration: none; font-size: 13px; }
+.overlay-footer a, .overlay-footer button { display: block; width: 100%; min-height: 48px; border: 0; text-align: center; background: #e0f0df; color: #254c2e; border-radius: 10px; padding: 14px; text-decoration: none; font-size: 13px; }
+.overlay-footer .download-link { margin-top: 8px; background: transparent; color: #d7e6d6; text-decoration: underline; }
+.export-help, .export-status { color: #d7e6d6; font-size: 12px; line-height: 1.8; }
+.export-status:empty { display: none; }
 @media (min-width: 650px) { .surface { padding: 24px; }.half-section { padding: 20px; }.counter { padding-top: 19px; }.quick-values button { min-height: 48px; } }
 @media (max-width: 560px) { .shell { padding: 0 12px; }.surface { padding: 15px; }.trend-grid { grid-template-columns: 1fr; }.trend-card { padding: 17px; }.kpi-grid { gap: 5px; }.kpi { padding: 12px 8px; }.kpi b { font-size: 21px; }.matrix { grid-template-columns: 45px repeat(9, minmax(0, 1fr)); gap: 2px; }.matrix-cell, .matrix-label { font-size: 9px; }.half-section { padding: 14px 10px; }.result-hero { padding: 19px; } }
 @media (max-width: 355px) { .surface { padding: 12px; }.hole-heading { gap: 6px; }.hole-picker { grid-template-columns: repeat(5, minmax(0, 1fr)); }.round-meta { grid-template-columns: 134px minmax(0, 1fr); gap: 7px; }.round-meta input { padding: 10px 8px; }.counter-heading h2 { font-size: 12px; }.matrix { grid-template-columns: 42px repeat(9, minmax(0, 1fr)); }.half-section { padding: 13px 8px; }.kpi span { font-size: 9px; } }

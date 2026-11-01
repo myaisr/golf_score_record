@@ -1,4 +1,4 @@
-const CACHE = 'roundnote-v5-course-labels';
+const CACHE = 'roundnote-v6-image-save';
 const ASSETS = ['./', './index.html', './app.css', './roundnote-core.js', './app.js', './manifest.webmanifest', './icon-192.png', './icon-512.png'];
 self.addEventListener('install', event => {
   event.waitUntil(caches.open(CACHE).then(cache => cache.addAll(ASSETS)).then(() => self.skipWaiting()));
