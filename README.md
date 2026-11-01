@@ -2,7 +2,7 @@
 
 ホール終了後に打数とミスを記録し、ラウンド後に100切りに向けた改善点を振り返るゴルフ記録Webアプリです。
 
-**[アプリを使う](https://myaisr.github.io/golf_score_record/)** · [ソースコード](https://github.com/myaisr/golf_score_record)
+**[アプリを使う](https://myaisr.github.io/golf_score_record/)** 
 
 ## 利用する方へ
 
