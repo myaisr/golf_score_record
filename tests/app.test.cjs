@@ -35,9 +35,14 @@ function openApp({ preview = true, storage = new Map(), storageFails = false, co
   app.addEventListener = (type, listener) => { handlers[type] = listener; };
   overlay.addEventListener = (type, listener) => { overlayHandlers[type] = listener; };
   function makeCanvas() {
-    const canvas = { width: 0, height: 0, text: [], draws: [] };
+    const canvas = { width: 0, height: 0, text: [], draws: [], fills: [] };
+    let rectangle;
     const context2d = new Proxy({
-      fillText(value, x, y, maxWidth) { canvas.text.push(String(value)); canvas.draws.push({ value: String(value), x, y, maxWidth, font: context2d.font }); },
+      fillText(value, x, y, maxWidth) { canvas.text.push(String(value)); canvas.draws.push({ value: String(value), x, y, maxWidth, font: context2d.font, color: context2d.fillStyle }); },
+      fillRect(x, y, width, height) { canvas.fills.push({ x, y, width, height, color: context2d.fillStyle }); },
+      beginPath() { rectangle = null; },
+      roundRect(x, y, width, height) { rectangle = { x, y, width, height }; },
+      fill() { if (rectangle) canvas.fills.push({ ...rectangle, color: context2d.fillStyle }); },
       measureText(value) { const size = Number(String(context2d.font).match(/(\d+)px/)?.[1] || 20); return { width: String(value).length * size * .55 }; },
     }, { get: (target, key) => target[key] || (() => {}) });
     canvas.getContext = () => context2d;
@@ -525,6 +530,55 @@ test('the 2000-round limit blocks a new round without changing the current selec
 });
 
 // Keep two readable PNG pages, rather than squeezing analysis into the original scorecard.
+test('scorecard process highlights agree on screen and PNG at scoring and OB-adjusted boundaries', () => {
+  const cases = [
+    [hole(), []],
+    [hole({ long: 3 }), ['long', 'score']],
+    [hole({ short: 2 }), ['short', 'score']],
+    [hole({ putts: 3 }), ['putts', 'score']],
+    [hole({ long: 4, obTee: 1 }), ['ob', 'score']],
+    [hole({ long: 5, obLater: 1 }), ['long', 'ob', 'score']],
+    [hole({ long: 6, obTee: 1, obLater: 1 }), ['ob', 'score']],
+    [hole({ long: 7, obTee: 1, obLater: 1 }), ['long', 'ob', 'score']],
+    [hole({ par: 3, long: 1 }), []],
+    [hole({ par: 3, long: 2 }), ['long', 'score']],
+    [hole({ par: 5, long: 3 }), []],
+    [hole({ par: 5, long: 4 }), ['long', 'score']],
+    [hole({ direct: true, long: 3, short: 0 }), []],
+    [hole({ direct: true, long: 4, short: 0 }), ['long', 'score']],
+    [Core.blankHole(), []],
+    [hole({ long: null, short: 2, putts: 3, obLater: 1 }), ['short', 'putts', 'ob']],
+    [hole({ long: 0, short: 0, putts: 0 }), []],
+    [hole({ par: 3, direct: true, long: 3, short: 0, putts: 0 }), ['long']],
+  ];
+  const fixture = completeRound({ finished: true, holes: cases.map(([h]) => h) });
+  const app = openApp({ storage: stored(database(fixture)) });
+  app.click({ view: 'result' });
+  const halves = app.markup().split('<div class="matrix">').slice(1);
+  app.click({ action: 'export' });
+  const png = app.canvases[1];
+  const fields = [['long', '50yまで', 2], ['short', '50y→ON', 3], ['putts', 'パット', 4], ['score', 'スコア', 5], ['ob', 'OB', 6]];
+  fields.forEach(([field, label, rowIndex]) => {
+    const screenCells = halves.flatMap(half => {
+      const row = half.split(`<div class="matrix-label">${label}</div>`)[1].split('<div class="matrix-label">')[0];
+      return [...row.matchAll(/<div class="matrix-cell ([^"]*)">([^<]*)<\/div>/g)];
+    });
+    assert.equal(screenCells.length, 18);
+    cases.forEach(([h, warnings], i) => {
+      const expected = warnings.includes(field);
+      assert.equal(screenCells[i][1].split(/\s+/).includes('bad'), expected, `${i + 1}H ${label} screen`);
+      const x = 257 + (i % 9) * 98, y = (i < 9 ? 350 : 820) + 70 + rowIndex * 32 + 24;
+      const draw = png.draws.find(draw => draw.x === x && draw.y === y);
+      assert.ok(draw, `${i + 1}H ${label} PNG cell exists`);
+      assert.equal(draw.value, screenCells[i][2], `${i + 1}H ${label} value unchanged`);
+      assert.equal(draw.color === '#946238', expected, `${i + 1}H ${label} PNG text`);
+      const background = png.fills.find(fill => fill.x === x - 46 && fill.y === y - 24 && fill.color === '#f9eee2');
+      assert.equal(!!background, expected, `${i + 1}H ${label} PNG background`);
+    });
+  });
+  assert.deepEqual(app.state().holes, fixture.holes);
+});
+
 test('native image save passes a prepared PNG file directly from the tap, with no URL or text', async () => {
   const shared = [];
   const app = openApp({ storage: stored(database(completeRound({ finished: true }))), navigator: {

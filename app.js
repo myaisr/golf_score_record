@@ -25,6 +25,18 @@
     const relative = score(h) - h.par;
     return ({ '-3': 'アルバトロス', '-2': 'イーグル', '-1': 'バーディ', 0: 'パー', 1: 'ボギー', 2: 'ダブルボギー', 3: 'トリプルボギー' })[relative] || sgn(relative);
   };
+  function scorecardWarning(h, field) {
+    switch (field) {
+      // Judge the long game with one approach stroke (none for direct ON),
+      // removing the lost stroke and penalty for each recorded OB.
+      case 'long': return finite(h.long) && h.long - 2 * (h.obTee + h.obLater) + (h.direct ? 0 : 1) > h.par - 1;
+      case 'short': return finite(h.short) && h.short >= 2;
+      case 'putts': return finite(h.putts) && h.putts >= 3;
+      case 'ob': return h.obTee + h.obLater > 0;
+      case 'score': return score(h) !== null && score(h) > h.par + 1;
+      default: return false;
+    }
+  }
   let database = Core.migrate(null);
   let state = { ...database.rounds[0], view: 'input' };
   let saveStatus = '';
@@ -142,8 +154,8 @@
   }
   function halfMatrix(start) {
     const holes = state.holes.slice(start, start + 9), t = sums(holes);
-    const rows = [['H', holes.map((_, i) => start + i + 1), 'head'], ['PAR', holes.map(h => h.par)], ['50yまで', holes.map(h => fmt(h.long))], ['50y→ON', holes.map(h => fmt(h.short))], ['パット', holes.map(h => fmt(h.putts))], ['スコア', holes.map(h => fmt(score(h))), 'score'], ['OB', holes.map(h => h.obTee + h.obLater)]];
-    return `<section class="surface half-section"><div class="half-head"><h3>${esc(courseName(start === 0 ? 0 : 1))}</h3><strong>${t.done ? t.score : '—'}<small>${t.done}/9H</small></strong></div><div class="matrix">${rows.map(([label, values, kind]) => `<div class="matrix-label">${label}</div>${values.map((value, i) => kind === 'head' ? `<button class="matrix-cell" data-hole="${start + i}" aria-label="${start + i + 1}Hを編集">${value}</button>` : `<div class="matrix-cell ${kind || ''} ${kind === 'score' && score(holes[i]) > holes[i].par + 1 ? 'bad' : ''} ${value === '—' ? 'muted' : ''}">${value}</div>`).join('')}`).join('')}</div></section>`;
+    const rows = [['H', holes.map((_, i) => start + i + 1), 'head'], ['PAR', holes.map(h => h.par)], ['50yまで', holes.map(h => fmt(h.long)), 'long'], ['50y→ON', holes.map(h => fmt(h.short)), 'short'], ['パット', holes.map(h => fmt(h.putts)), 'putts'], ['スコア', holes.map(h => fmt(score(h))), 'score'], ['OB', holes.map(h => h.obTee + h.obLater), 'ob']];
+    return `<section class="surface half-section"><div class="half-head"><h3>${esc(courseName(start === 0 ? 0 : 1))}</h3><strong>${t.done ? t.score : '—'}<small>${t.done}/9H</small></strong></div><div class="matrix">${rows.map(([label, values, kind]) => `<div class="matrix-label">${label}</div>${values.map((value, i) => kind === 'head' ? `<button class="matrix-cell" data-hole="${start + i}" aria-label="${start + i + 1}Hを編集">${value}</button>` : `<div class="matrix-cell ${kind === 'score' ? 'score' : ''} ${scorecardWarning(holes[i], kind) ? 'bad' : ''} ${value === '—' ? 'muted' : ''}">${value}</div>`).join('')}`).join('')}</div></section>`;
   }
   function shotStats() {
     return sums(state.holes);
@@ -424,12 +436,16 @@
       const holes = state.holes.slice(start, start + 9), total = sums(holes);
       rect(36, y, 1128, 450, '#fff'); text(courseName(start === 0 ? 0 : 1), 66, y + 46, 28, ink, 800, 'left', 700);
       text(`${total.done ? total.score : '—'} 打  ·  ${total.done}/9H`, 1126, y + 46, 25, green, 700, 'right');
-      const rows = [['H', holes.map((_, i) => start + i + 1)], ['PAR', holes.map(h => h.par)], ['50yまで', holes.map(h => fmt(h.long))], ['50y→ON', holes.map(h => fmt(h.short))], ['パット', holes.map(h => fmt(h.putts))], ['スコア', holes.map(h => fmt(score(h)))], ['OB', holes.map(h => h.obTee + h.obLater)], ['B-on', holes.map(h => bogeyOn(h) === null ? '—' : bogeyOn(h) ? '○' : '−')], ['ティー方向', holes.map(h => h.tee ? TEE[h.tee] : '—')], ['ティー短', holes.map(h => h.teeShort ? 'ショート' : '—')], ['使用クラブ', holes.map(h => ({driver:'1W',wood_ut:'W/UT',iron:'I',wedge:'WG'})[h.teeClub] || '—')]];
-      rows.forEach(([label, values], ri) => {
+      const rows = [['H', holes.map((_, i) => start + i + 1)], ['PAR', holes.map(h => h.par)], ['50yまで', holes.map(h => fmt(h.long)), 'long'], ['50y→ON', holes.map(h => fmt(h.short)), 'short'], ['パット', holes.map(h => fmt(h.putts)), 'putts'], ['スコア', holes.map(h => fmt(score(h))), 'score'], ['OB', holes.map(h => h.obTee + h.obLater), 'ob'], ['B-on', holes.map(h => bogeyOn(h) === null ? '—' : bogeyOn(h) ? '○' : '−')], ['ティー方向', holes.map(h => h.tee ? TEE[h.tee] : '—')], ['ティー短', holes.map(h => h.teeShort ? 'ショート' : '—')], ['使用クラブ', holes.map(h => ({driver:'1W',wood_ut:'W/UT',iron:'I',wedge:'WG'})[h.teeClub] || '—')]];
+      rows.forEach(([label, values, field], ri) => {
         const yy = y + 70 + ri * 32;
         rect(60, yy, 1080, 30, ri === 5 ? '#e3efdf' : ri % 2 === 0 ? '#f3f7ee' : '#fff');
         text(label, 73, yy + 24, 20, muted, 600);
-        values.forEach((value, i) => text(value, 257 + i * 98, yy + 24, 20, ri === 5 ? green : ink, ri === 5 ? 800 : 600, 'center', 90));
+        values.forEach((value, i) => {
+          const warning = scorecardWarning(holes[i], field);
+          if (warning) rect(211 + i * 98, yy, 92, 30, '#f9eee2');
+          text(value, 257 + i * 98, yy + 24, 20, warning ? '#946238' : ri === 5 ? green : ink, ri === 5 ? 800 : 600, 'center', 90);
+        });
       });
     }
     matrix(0, 350); matrix(9, 820);
