@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="ゴルフ記録アプリROUNDNOTEの紹介画像・15秒動画・投稿文を見たり、保存したりできます。">
+  <meta name="theme-color" content="#193e2b">
+  <title>紹介画像・動画 | ROUNDNOTE</title>
+  <link rel="icon" type="image/png" href="../icon-192.png">
+  <link rel="stylesheet" href="promo.css">
+</head>
+<body>
+  <header>
+    <a class="brand" href="../">ROUNDNOTE</a>
+    <a class="app-link" href="../">アプリを使う <span aria-hidden="true">↗</span></a>
+  </header>
+  <main>
+    <div class="intro">
+      <p class="eyebrow">100切りへ、1ホールずつ。</p>
+      <h1>紹介画像・動画</h1>
+      <p>ラウンド中に記録して、終わったら振り返る。<br>ROUNDNOTEを紹介する素材をまとめました。</p>
+      <a class="button primary" href="roundnote-social-kit.zip" download>画像・動画・投稿文をまとめて保存</a>
+      <p class="file-note">ZIP・約2.1MB。すべてサンプル記録を使っています。</p>
+    </div>
+    <div class="media-grid">
+      <section class="card" aria-labelledby="video-heading">
+        <div class="card-head">
+          <h2 id="video-heading">紹介動画</h2>
+          <p>15秒・縦型・字幕付き。音声はありません。</p>
+        </div>
+        <video controls playsinline preload="metadata" poster="video-poster.png" width="720" height="1280" aria-label="ROUNDNOTEの使い方を紹介する15秒動画">
+          <source src="roundnote-intro.mp4" type="video/mp4">
+          <p>このブラウザでは動画を再生できません。<a href="roundnote-intro.mp4">動画を直接開く</a>か、<a href="roundnote-intro-preview.gif">GIF版をご覧ください</a>。</p>
+        </video>
+        <div class="card-actions">
+          <a class="button primary" href="roundnote-intro.mp4" download>動画を保存（MP4）</a>
+          <a class="text-link" href="roundnote-intro.mp4">動画だけを直接開く</a>
+          <a class="text-link" href="roundnote-intro-preview.gif">GIF版を見る</a>
+          <p class="file-note">MP4・約500KB。iPhoneでは、動画を直接開いて共有メニューから保存することもできます。</p>
+        </div>
+      </section>
+      <section class="card" aria-labelledby="image-heading">
+        <div class="card-head">
+          <h2 id="image-heading">紹介画像</h2>
+          <p>入力画面と、色分けされたスコアカードを紹介。</p>
+        </div>
+        <a class="image-link" href="roundnote-intro.png" aria-label="紹介画像を大きく表示">
+          <img src="roundnote-intro.png" width="1122" height="1402" loading="lazy" alt="100切りへ、1ホールずつ。ホールごとの入力とラウンド後のスコアカードを紹介するROUNDNOTEの画像。">
+        </a>
+        <div class="card-actions">
+          <a class="button primary" href="roundnote-intro.png" download>画像を保存（PNG）</a>
+          <a class="text-link" href="roundnote-intro.png">画像だけを直接開く</a>
+          <p class="file-note">PNG・約1.4MB。スマホでは画像を長押しして保存することもできます。</p>
+        </div>
+      </section>
+    </div>
+    <section class="card copy-card" aria-labelledby="copy-heading">
+      <h2 id="copy-heading">投稿文</h2>
+      <p>URL・改行を含めて140文字以内。画像にも動画にも使えます。</p>
+      <textarea id="post-copy" aria-label="紹介用の投稿文" rows="7" readonly>100切りを目指して、ゴルフ記録アプリ「ROUNDNOTE」を作りました⛳️
+ホールごとに打数・OB・パットを記録して、ラウンド後に振り返り。
+ログイン不要、スマホのブラウザで使えます。
+https://myaisr.github.io/golf_score_record/</textarea>
+      <div class="copy-actions">
+        <button class="button secondary" id="copy-button" type="button">投稿文をコピー</button>
+        <a class="text-link" href="roundnote-post.txt" download>テキストで保存</a>
+        <span id="copy-status" role="status" aria-live="polite"></span>
+      </div>
+    </section>
+  </main>
+  <footer><a href="../">ROUNDNOTEを使う <span aria-hidden="true">↗</span></a></footer>
+  <script>
+    document.getElementById('copy-button').addEventListener('click', async () => {
+      const field = document.getElementById('post-copy');
+      const status = document.getElementById('copy-status');
+      try {
+        await navigator.clipboard.writeText(field.value);
+        status.textContent = 'コピーしました';
+      } catch {
+        field.focus();
+        field.select();
+        field.setSelectionRange(0, field.value.length);
+        status.textContent = '投稿文を選択しました。メニューからコピーしてください。';
+      }
+    });
+  </script>
+</body>
+</html>

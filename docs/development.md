@@ -59,6 +59,12 @@ GitHub Pagesでは **Settings → Pages → Deploy from a branch → main / (roo
 
 PWAの配信ファイルを更新した場合は `sw.js` のキャッシュ名も更新し、オフラインで使うファイルを追加した場合は `ASSETS` に含めてください。
 
+### 紹介素材
+
+`promo/` に、紹介画像・15秒動画・投稿文とZIPの保存ページがあります。公開先は https://myaisr.github.io/golf_score_record/promo/ です。動画はH.264/AACのMP4で、ページ内再生と直接表示に対応します。素材にはサンプル記録を使用しています。
+
+`scripts/preview.mjs` はアプリ本体だけを配信するため、紹介ページの確認にはリポジトリルートで `python3 -m http.server 8000 --bind 127.0.0.1` を実行し、`/promo/` を開きます。紹介素材はPWAの初期オフラインキャッシュには含めていません。
+
 ## ファイル構成
 
 - `index.html`：静的エントリーポイント
