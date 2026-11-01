@@ -7,6 +7,49 @@ const full = overrides => Array.from({ length: 18 }, () => hole(overrides));
 const makeDatabase = round => ({ schemaVersion: 2, currentRoundId: round.id, goals: { ...Core.DEFAULT_GOALS }, rounds: [round] });
 const round = (options = {}) => Core.newRound({ id: 'round-test', date: '2026-11-01', createdAt: '2026-11-01T00:00:00.000Z', updatedAt: '2026-11-01T00:00:00.000Z', ...options });
 
+test('tee chart counts holes by club and direction, using tee OB only even for repeated OB', () => {
+  const holes = [hole({ teeClub: 'driver', tee: 'right', obTee: 3 }), hole({ teeClub: 'driver', tee: 'right', obLater: 2 }),
+    hole({ teeClub: 'wood_ut', tee: 'left', obTee: 1, putts: null }), hole({ teeClub: 'iron', tee: 'straight' }), hole({ teeClub: 'wedge', tee: 'straight' })];
+  const original = JSON.stringify(holes), a = Core.teeShotBreakdown(holes);
+  assert.equal(a.total, 5);
+  assert.deepEqual(a.directions, { left: { total: 1, ob: 1 }, straight: { total: 2, ob: 0 }, right: { total: 2, ob: 1 } });
+  assert.deepEqual(a.series.find(s => s.key === 'driver').counts.right, { safe: 1, ob: 1 });
+  assert.equal(JSON.stringify(holes), original);
+});
+
+test('tee chart filters multiple clubs without changing the axis or including deselected series', () => {
+  const holes = [...full({ teeClub: 'driver', tee: 'straight' }).slice(0, 12), hole({ teeClub: 'wood_ut', tee: 'left' }), hole({ teeClub: 'iron', tee: 'right' })];
+  const all = Core.teeShotBreakdown(holes), single = Core.teeShotBreakdown(holes, ['wood_ut']);
+  const multiple = Core.teeShotBreakdown(holes, ['wood_ut', 'iron', 'iron']), empty = Core.teeShotBreakdown(holes, []);
+  assert.equal(all.total, 14); assert.equal(single.total, 1); assert.equal(multiple.total, 2); assert.equal(empty.total, 0);
+  assert.deepEqual(multiple.series.map(s => s.key), ['wood_ut', 'iron']);
+  for (const a of [single, multiple, empty]) assert.equal(a.axisMax, all.axisMax);
+  assert.ok(all.axisMax >= 12);
+  assert.deepEqual(empty.series, []);
+});
+
+test('tee chart preserves pre-club records in gray and reports missing directions separately', () => {
+  const legacy = hole({ tee: 'good', obTee: 2 }); delete legacy.teeClub;
+  const holes = [legacy, hole({ teeClub: 'driver', tee: 'left' }), hole({ teeClub: 'driver', tee: null, obTee: 1 }), Core.blankHole()];
+  const all = Core.teeShotBreakdown(holes), driver = Core.teeShotBreakdown(holes, ['driver']);
+  assert.equal(all.total, 2); assert.equal(all.unknownClub, 1);
+  assert.deepEqual(all.series.find(s => s.key === 'unknown').counts.straight, { safe: 0, ob: 1 });
+  assert.equal(all.missingDirection, 1); assert.equal(all.missingDirectionOB, 1);
+  assert.equal(driver.total, 1); assert.equal(driver.unknownClub, 1);
+  assert.equal(driver.missingDirection, 1); assert.equal(driver.missingDirectionOB, 1);
+  assert.ok(!driver.series.some(s => s.key === 'unknown'));
+});
+
+test('tee chart handles blank and no-direction data with a finite nonzero scale', () => {
+  for (const holes of [[], full({ long: null, short: null, putts: null }), [hole({ teeClub: 'wedge', teeShort: true })]]) {
+    const a = Core.teeShotBreakdown(holes);
+    assert.equal(a.total, 0); assert.equal(a.axisMax, 2); assert.equal(a.axisStep, 2);
+    assert.ok(Object.values(a.directions).every(n => n.total === 0 && n.ob === 0));
+  }
+  const a = Core.teeShotBreakdown(full({ teeClub: 'driver', tee: 'right' }));
+  assert.equal(a.axisMax, 20); assert.equal(a.axisStep, 4);
+});
+
 test('removed long goal is ignored in older backups while hole-level shot counts remain intact', () => {
   const old = makeDatabase(round({ holes: full(), finished: true }));
   old.goals.long = 40;
