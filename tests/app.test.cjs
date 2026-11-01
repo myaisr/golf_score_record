@@ -566,17 +566,44 @@ test('scorecard process highlights agree on screen and PNG at scoring and OB-adj
     assert.equal(screenCells.length, 18);
     cases.forEach(([h, warnings], i) => {
       const expected = warnings.includes(field);
-      assert.equal(screenCells[i][1].split(/\s+/).includes('bad'), expected, `${i + 1}H ${label} screen`);
+      const triple = field === 'score' && expected && h.long + h.short + h.putts >= h.par + 3;
+      const classes = screenCells[i][1].split(/\s+/);
+      assert.equal(classes.includes('bad'), expected && !triple, `${i + 1}H ${label} screen orange`);
+      assert.equal(classes.includes('triple'), triple, `${i + 1}H ${label} screen purple`);
       const x = 257 + (i % 9) * 98, y = (i < 9 ? 350 : 820) + 70 + rowIndex * 32 + 24;
       const draw = png.draws.find(draw => draw.x === x && draw.y === y);
       assert.ok(draw, `${i + 1}H ${label} PNG cell exists`);
       assert.equal(draw.value, screenCells[i][2], `${i + 1}H ${label} value unchanged`);
-      assert.equal(draw.color === '#946238', expected, `${i + 1}H ${label} PNG text`);
-      const background = png.fills.find(fill => fill.x === x - 46 && fill.y === y - 24 && fill.color === '#f9eee2');
+      assert.equal(draw.color === '#946238', expected && !triple, `${i + 1}H ${label} PNG orange text`);
+      assert.equal(draw.color === '#70419a', triple, `${i + 1}H ${label} PNG purple text`);
+      const background = png.fills.find(fill => fill.x === x - 46 && fill.y === y - 24 && ['#f9eee2', '#eee6f7'].includes(fill.color));
       assert.equal(!!background, expected, `${i + 1}H ${label} PNG background`);
+      if (expected) assert.equal(background.color, triple ? '#eee6f7' : '#f9eee2');
     });
   });
   assert.deepEqual(app.state().holes, fixture.holes);
+});
+
+test('scores use orange for double bogey and purple for triple or worse across Par 3, 4 and 5', () => {
+  const cases = [3, 4, 5].flatMap(par => [0, 1, 2, 3, 4, null].map(relative => ({
+    h: hole({ par, long: par - 1, short: 1, putts: relative }),
+    tone: relative === null || relative <= 1 ? '' : relative === 2 ? 'bad' : 'triple',
+  })));
+  const fixture = completeRound({ finished: true, holes: cases.map(({ h }) => h) });
+  const app = openApp({ storage: stored(database(fixture)) });
+  app.click({ view: 'result' });
+  const cells = [...app.markup().matchAll(/<div class="matrix-cell score ([^"]*)">([^<]*)<\/div>/g)];
+  assert.equal(cells.length, 18);
+  app.click({ action: 'export' });
+  const png = app.canvases[1];
+  cases.forEach(({ h, tone }, i) => {
+    const classes = cells[i][1].split(/\s+/);
+    assert.equal(classes.includes('bad'), tone === 'bad', `${i + 1}H double bogey`);
+    assert.equal(classes.includes('triple'), tone === 'triple', `${i + 1}H triple or worse`);
+    const draw = png.draws.find(draw => draw.x === 257 + (i % 9) * 98 && draw.y === (i < 9 ? 350 : 820) + 254);
+    assert.equal(draw.color, tone === 'triple' ? '#70419a' : tone === 'bad' ? '#946238' : '#256344');
+    assert.equal(draw.value, h.putts === null ? '—' : String(h.par + h.putts));
+  });
 });
 
 test('native image save passes a prepared PNG file directly from the tap, with no URL or text', async () => {

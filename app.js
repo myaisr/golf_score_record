@@ -37,6 +37,7 @@
       default: return false;
     }
   }
+  const scorecardTone = (h, field) => field === 'score' && score(h) !== null && score(h) >= h.par + 3 ? 'triple' : scorecardWarning(h, field) ? 'bad' : '';
   let database = Core.migrate(null);
   let state = { ...database.rounds[0], view: 'input' };
   let saveStatus = '';
@@ -155,7 +156,7 @@
   function halfMatrix(start) {
     const holes = state.holes.slice(start, start + 9), t = sums(holes);
     const rows = [['H', holes.map((_, i) => start + i + 1), 'head'], ['PAR', holes.map(h => h.par)], ['50yまで', holes.map(h => fmt(h.long)), 'long'], ['50y→ON', holes.map(h => fmt(h.short)), 'short'], ['パット', holes.map(h => fmt(h.putts)), 'putts'], ['スコア', holes.map(h => fmt(score(h))), 'score'], ['OB', holes.map(h => h.obTee + h.obLater), 'ob']];
-    return `<section class="surface half-section"><div class="half-head"><h3>${esc(courseName(start === 0 ? 0 : 1))}</h3><strong>${t.done ? t.score : '—'}<small>${t.done}/9H</small></strong></div><div class="matrix">${rows.map(([label, values, kind]) => `<div class="matrix-label">${label}</div>${values.map((value, i) => kind === 'head' ? `<button class="matrix-cell" data-hole="${start + i}" aria-label="${start + i + 1}Hを編集">${value}</button>` : `<div class="matrix-cell ${kind === 'score' ? 'score' : ''} ${scorecardWarning(holes[i], kind) ? 'bad' : ''} ${value === '—' ? 'muted' : ''}">${value}</div>`).join('')}`).join('')}</div></section>`;
+    return `<section class="surface half-section"><div class="half-head"><h3>${esc(courseName(start === 0 ? 0 : 1))}</h3><strong>${t.done ? t.score : '—'}<small>${t.done}/9H</small></strong></div><div class="matrix">${rows.map(([label, values, kind]) => `<div class="matrix-label">${label}</div>${values.map((value, i) => kind === 'head' ? `<button class="matrix-cell" data-hole="${start + i}" aria-label="${start + i + 1}Hを編集">${value}</button>` : `<div class="matrix-cell ${kind === 'score' ? 'score' : ''} ${scorecardTone(holes[i], kind)} ${value === '—' ? 'muted' : ''}">${value}</div>`).join('')}`).join('')}</div></section>`;
   }
   function shotStats() {
     return sums(state.holes);
@@ -442,9 +443,9 @@
         rect(60, yy, 1080, 30, ri === 5 ? '#e3efdf' : ri % 2 === 0 ? '#f3f7ee' : '#fff');
         text(label, 73, yy + 24, 20, muted, 600);
         values.forEach((value, i) => {
-          const warning = scorecardWarning(holes[i], field);
-          if (warning) rect(211 + i * 98, yy, 92, 30, '#f9eee2');
-          text(value, 257 + i * 98, yy + 24, 20, warning ? '#946238' : ri === 5 ? green : ink, ri === 5 ? 800 : 600, 'center', 90);
+          const tone = scorecardTone(holes[i], field);
+          if (tone) rect(211 + i * 98, yy, 92, 30, tone === 'triple' ? '#eee6f7' : '#f9eee2');
+          text(value, 257 + i * 98, yy + 24, 20, tone === 'triple' ? '#70419a' : tone === 'bad' ? '#946238' : ri === 5 ? green : ink, ri === 5 ? 800 : 600, 'center', 90);
         });
       });
     }
