@@ -216,4 +216,17 @@ button.matrix-cell { border: 0; min-height: 36px; background: #e8f1e6; color: #3
 .history-row>span:last-child { flex-shrink: 0; font-size: 10px; color: var(--muted); }
 .empty-history { color: var(--muted); font-size: 12px; padding: 20px 0; }
 .export-page { margin: 0 0 30px; }.export-page h3 { color: #d7e6d6; font-size: 13px; font-weight: 600; }
+.course-settings { margin: -4px 0 12px; color: var(--muted); font-size: 11px; }
+.course-settings summary { cursor: pointer; min-height: 36px; padding: 9px 0; overflow-wrap: anywhere; }
+.course-fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; padding: 3px 0 8px; }
+.course-fields label { display: grid; gap: 6px; }
+.course-fields input { min-width: 0; width: 100%; min-height: 44px; padding: 10px; border: 1px solid var(--line); border-radius: 8px; background: #fff; color: #264d36; font-size: 16px; }
+.hole-progress { max-width: 48%; overflow-wrap: anywhere; text-align: right; }
+.result-halves>span { flex-wrap: wrap; }
+.course-label { min-width: 0; overflow-wrap: anywhere; }
+.scope-tabs button, .half-head h3 { overflow-wrap: anywhere; }
+.scope-tabs button { min-width: 0; padding: 8px 5px; }
+.result-backup { margin-top: 20px; }
+.result-backup h2 { margin: 0 0 10px; font-size: 14px; }
+.result-backup p { margin: 0 0 14px; color: var(--muted); font-size: 12px; line-height: 1.8; }
 @media (max-width: 560px) { .comparison-table { font-size: 11px; }.comparison-table th, .comparison-table td { padding: 12px 6px; }.comparison-table tbody th { font-size: 11px; }.comparison-table th:first-child { width: 35%; } }

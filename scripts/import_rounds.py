@@ -39,7 +39,7 @@ APPROACH = {'short': 'ショート', 'over': 'オーバー', 'left': '左', 'rig
 GREEN = '193E2B'
 MID_GREEN = '34794E'
 MUTED = '65796D'
-DEFAULT_GOALS = {'score': 99, 'long': 40, 'ob': 2, 'approachRate': 30, 'putts': 36, 'bogeyOnHoles': 12}
+DEFAULT_GOALS = {'score': 99, 'ob': 2, 'approachRate': 30, 'putts': 36, 'bogeyOnHoles': 12}
 
 
 def number(value, maximum=30, nullable=True):
@@ -136,6 +136,10 @@ def normalize_round(raw, legacy=False):
     place = raw.get('place', '')
     if not isinstance(place, str) or len(place.encode('utf-16-le', errors='surrogatepass')) // 2 > 100:
         raise ValueError('ゴルフ場名は100文字以内の文字列が必要です')
+    course_names = raw.get('courseNames', ['OUT', 'IN'])
+    if not isinstance(course_names, list) or len(course_names) != 2 or any(not isinstance(name, str) or not name.strip() or len(name.encode('utf-16-le', errors='surrogatepass')) // 2 > 20 for name in course_names):
+        raise ValueError('前後半のコース名はそれぞれ20文字以内の文字列が必要です')
+    course_names = [name.strip() for name in course_names]
     active = number(raw.get('active', 0), 17, False)
     identifier = raw.get('id') or (legacy_id(raw, holes) if legacy else None)
     if not isinstance(identifier, str) or re.fullmatch(r'[A-Za-z0-9][A-Za-z0-9._:-]{0,127}', identifier) is None:
@@ -152,7 +156,7 @@ def normalize_round(raw, legacy=False):
         raise ValueError('finishedは真偽値が必要です')
     if legacy:
         finished = finished or all(score(h) is not None for h in holes)
-    return {'id': identifier, 'date': day, 'place': place, 'holes': holes, 'active': active,
+    return {'id': identifier, 'date': day, 'place': place, 'courseNames': course_names, 'holes': holes, 'active': active,
             'finished': finished, 'createdAt': created, 'updatedAt': updated}
 
 
@@ -171,7 +175,7 @@ def read_json(data):
         goals = data.get('goals')
         if not isinstance(goals, dict):
             raise ValueError('目標設定がありません')
-        for key, lower, upper in [('score', 1, 1620), ('long', 0, 540), ('ob', 0, 162), ('approachRate', 0, 100), ('putts', 0, 540), ('bogeyOnHoles', 0, 18)]:
+        for key, lower, upper in [('score', 1, 1620), ('ob', 0, 162), ('approachRate', 0, 100), ('putts', 0, 540), ('bogeyOnHoles', 0, 18)]:
             n = goals.get(key)
             if isinstance(n, bool) or not isinstance(n, (int, float)) or not math.isfinite(n) or not lower <= n <= upper or (key != 'approachRate' and int(n) != n):
                 raise ValueError(f'{key}の目標が不正です')
@@ -292,7 +296,7 @@ class Writer:
 
 
 DETAIL_HEADERS = ['ラウンドID', '日付', 'ゴルフ場', 'ホール', '前後半', 'PAR', '50yまで', '50yからON', 'パット', 'ティー方向', 'ティーショート', '直接ON', 'ティーOB', '2打目以降OB', '50yミス', '入力完了', 'スコア', 'ONまで', 'ボギーオン以内', '50y対象', '50y2打以上', '直接ON対象', 'ティー結果記録', 'ティー方向記録', 'ティーOB左', 'ティーOB右', 'ティーOBその他', '3パット以上', 'ティーショート対象', 'ティー使用クラブ']
-HISTORY_HEADERS = ['ラウンドID', '日付', 'ゴルフ場', '終了', '更新日時', '入力済みH', '終了済み18H', 'スコア', '対PAR', '50yまで', '50yからON', 'パット', 'OB合計', 'ティーOB', '2打目以降OB', 'ティーOB左', 'ティーOB右', 'ティーOBその他', 'ティー方向記録H', 'ティーショートH', 'ティー結果記録H', 'ティーショート率', '50y対象H', '50y2打以上H', '50y2打以上率', 'ボギーオン以内H', 'ボギーオン率', '直接ON回数', '直接ON率', '3パット以上H', 'OUTスコア', 'INスコア', '作成日時', 'ティーショート対象H']
+HISTORY_HEADERS = ['ラウンドID', '日付', 'ゴルフ場', '終了', '更新日時', '入力済みH', '終了済み18H', 'スコア', '対PAR', '50yまで', '50yからON', 'パット', 'OB合計', 'ティーOB', '2打目以降OB', 'ティーOB左', 'ティーOB右', 'ティーOBその他', 'ティー方向記録H', 'ティーショートH', 'ティー結果記録H', 'ティーショート率', '50y対象H', '50y2打以上H', '50y2打以上率', 'ボギーオン以内H', 'ボギーオン率', '直接ON回数', '直接ON率', '3パット以上H', '前半スコア', '後半スコア', '作成日時', 'ティーショート対象H', '前半コース名', '後半コース名']
 
 
 def add_detail(writer, record):
@@ -300,7 +304,7 @@ def add_detail(writer, record):
     first = sheet.max_row + 1 if sheet.cell(1, 1).value is not None else 2
     for index, h in enumerate(record['holes']):
         row = first + index
-        raw = [record['id'], date.fromisoformat(record['date']) if record['date'] else None, record['place'], index + 1, 'OUT' if index < 9 else 'IN', h['par'], h['long'], h['short'], h['putts'], TEE.get(h['tee']), None if h['teeShort'] is None else int(h['teeShort']), int(h['direct']), h['obTee'], h['obLater'], None if h['approach'] is None else '・'.join(APPROACH[k] for k in h['approach']) if h['approach'] else 'ミスなし']
+        raw = [record['id'], date.fromisoformat(record['date']) if record['date'] else None, record['place'], index + 1, record.get('courseNames', ['OUT', 'IN'])[0 if index < 9 else 1], h['par'], h['long'], h['short'], h['putts'], TEE.get(h['tee']), None if h['teeShort'] is None else int(h['teeShort']), int(h['direct']), h['obTee'], h['obLater'], None if h['approach'] is None else '・'.join(APPROACH[k] for k in h['approach']) if h['approach'] else 'ミスなし']
         for col, value in enumerate(raw, 1):
             writer.value(sheet, row, col, value)
         writer.value(sheet, row, 30, CLUBS.get(h.get('teeClub')))
@@ -359,12 +363,18 @@ def add_history(writer, record, first, last):
         (30, f'=SUM({r("AB")})', t['threePutts']),
         (34, f'=SUM({r("AC")})', t['teeShortRecorded']),
     ]
-    for col, half in ((31, 'OUT'), (32, 'IN')):
-        partial = analyze(record['holes'][:9] if half == 'OUT' else record['holes'][9:])
-        calculations.append((col, f'=IF(COUNTIFS({r("E")},"{half}",{r("P")},1)=0,"",SUMIFS({r("Q")},{r("E")},"{half}"))', partial['score'] if partial['done'] else None))
+    for col, offset in ((31, 0), (32, 9)):
+        partial = analyze(record['holes'][offset:offset + 9])
+        # Use the nine-row block, so duplicate names and Excel wildcard characters
+        # in course labels cannot combine or change the two halves.
+        done_range = f"'{DETAIL}'!$P${first + offset}:$P${first + offset + 8}"
+        score_range = f"'{DETAIL}'!$Q${first + offset}:$Q${first + offset + 8}"
+        calculations.append((col, f'=IF(COUNTIF({done_range},1)=0,"",SUM({score_range}))', partial['score'] if partial['done'] else None))
     for col, expression, cached in calculations:
         writer.formula(sheet, row, col, expression, cached)
     writer.value(sheet, row, 33, record['createdAt'])
+    for col, name in enumerate(record.get('courseNames', ['OUT', 'IN']), 35):
+        writer.value(sheet, row, col, name)
     writer.value(sheet, row, JSON_COLUMN, json.dumps(record, ensure_ascii=False, separators=(',', ':')))
     sheet.cell(row, 2).number_format = 'yyyy-mm-dd'
     for col in (22, 25, 27, 29):
@@ -544,6 +554,9 @@ def write_workbook(rounds, output):
     writer.workbook[HISTORY].column_dimensions['AG'].width = 26
     writer.workbook[DETAIL].column_dimensions['O'].width = 28
     writer.workbook[DETAIL].column_dimensions['AD'].width = 28
+    for col in ('AI', 'AJ'):
+        writer.workbook[HISTORY].column_dimensions[col].width = 24
+    writer.workbook[DETAIL].column_dimensions['E'].width = 24
     add_dashboard(writer, records)
     output = Path(output)
     output.parent.mkdir(parents=True, exist_ok=True)

@@ -11,7 +11,7 @@ function worker() {
     self: { location: { origin: 'http://localhost:8000' }, addEventListener: (name, fn) => { handlers[name] = fn; }, skipWaiting() {}, clients: { claim() {} } },
     caches: {
       open: async () => ({ addAll: async paths => installed.push(...paths) }),
-      keys: async () => ['another-app-cache', 'roundnote-v1', 'roundnote-v4-analysis-history'],
+      keys: async () => ['another-app-cache', 'roundnote-v1', 'roundnote-v4-analysis-history', 'roundnote-v5-course-labels'],
       delete: async name => deleted.push(name),
       match: async request => request === './index.html' ? new Response('offline app') : undefined,
     },
@@ -42,5 +42,5 @@ test('activation only removes caches owned by ROUNDNOTE', async () => {
   let finished;
   w.handlers.activate({ waitUntil: promise => { finished = promise; } });
   await finished;
-  assert.deepEqual(w.deleted, ['roundnote-v1']);
+  assert.deepEqual(w.deleted, ['roundnote-v1', 'roundnote-v4-analysis-history']);
 });

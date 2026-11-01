@@ -7,6 +7,31 @@ const full = overrides => Array.from({ length: 18 }, () => hole(overrides));
 const makeDatabase = round => ({ schemaVersion: 2, currentRoundId: round.id, goals: { ...Core.DEFAULT_GOALS }, rounds: [round] });
 const round = (options = {}) => Core.newRound({ id: 'round-test', date: '2026-11-01', createdAt: '2026-11-01T00:00:00.000Z', updatedAt: '2026-11-01T00:00:00.000Z', ...options });
 
+test('removed long goal is ignored in older backups while hole-level shot counts remain intact', () => {
+  const old = makeDatabase(round({ holes: full(), finished: true }));
+  old.goals.long = 40;
+  delete old.rounds[0].courseNames;
+  const restored = Core.validateImport(old);
+  assert.equal(restored.goals.long, undefined);
+  assert.deepEqual(restored.rounds[0].courseNames, ['OUT', 'IN']);
+  assert.equal(Core.analyze(restored.rounds[0].holes).long, 36);
+  for (const scope of ['all', 'out', 'in']) {
+    assert.deepEqual(Core.compare(restored.rounds[0].holes, restored.goals, scope).map(row => row.key), ['score', 'ob', 'approachRate', 'putts', 'bogeyRate']);
+  }
+});
+
+test('per-round course names preserve playing order, accept repeats, and validate imports', () => {
+  for (const names of [['IN', 'OUT'], ['東', '西'], ['同名', '同名']]) {
+    const db = makeDatabase(round({ courseNames: names }));
+    assert.deepEqual(Core.validateImport(db).rounds[0].courseNames, names);
+    assert.equal(Core.hasRoundData(db.rounds[0]), true);
+  }
+  for (const names of [null, [], ['東'], ['東', 2], ['東', ''], ['a'.repeat(21), '西']]) {
+    const db = makeDatabase(round()); db.rounds[0].courseNames = names;
+    assert.throws(() => Core.validateImport(db), /コース名/);
+  }
+});
+
 test('optional tee club round-trips, rejects unknown choices, and keeps pre-club legacy IDs', () => {
   const saved = makeDatabase(round());
   delete saved.rounds[0].holes[0].teeClub;
@@ -126,7 +151,7 @@ test('OUT and IN targets add to the independent total target', () => {
   const inn = Core.compare(full(), Core.DEFAULT_GOALS, 'in');
   assert.equal(out.find(row => row.key === 'score').target, 50);
   assert.equal(inn.find(row => row.key === 'score').target, 49);
-  assert.equal(out.find(row => row.key === 'long').target, 20);
+  assert.equal(out.some(row => row.key === 'long'), false);
   assert.equal(inn.find(row => row.key === 'ob').target, 1);
   assert.equal(out.find(row => row.key === 'approachRate').target, 30);
   assert.equal(out.find(row => row.key === 'bogeyRate').target, 12 / 18 * 100);
