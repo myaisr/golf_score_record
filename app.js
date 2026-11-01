@@ -310,24 +310,59 @@
     database.rounds = database.rounds.filter(r => r.id !== state.id); database.rounds.push(sample); state = sample;
     ui.review = false; ui.holes = false; ui.scope = 'all'; save(); render(); window.scrollTo(0, 0);
   }
-  let exportFocus, previousOverflow;
+  let exportFocus, previousOverflow, exportPages = [];
   function closeExport() {
+    exportPages = [];
     overlayRoot.replaceChildren(); elem.inert = false;
     document.body.style.overflow = previousOverflow;
     exportFocus?.focus({ preventScroll: true });
   }
   function exportImage() {
     if (!state.finished) return;
-    const pages = [['analysis', '分析'], ['scorecard', 'スコアカード']].map(([key, label]) => ({ key, label, data: makeImage(key) }));
     const stamp = (state.date || today()).replace(/[^\d-]/g, '');
+    const pages = [['analysis', '分析'], ['scorecard', 'スコアカード']].map(([key, label]) => {
+      const data = makeImage(key), filename = `golf-round-${stamp}-${key}.png`;
+      // Prepare the file before the save button is tapped. Safari requires the
+      // native menu to open directly from that tap, without an async conversion.
+      let file = null;
+      try {
+        if (typeof File === 'function') file = new File([Uint8Array.from(atob(data.split(',')[1]), c => c.charCodeAt(0))], filename, { type: 'image/png' });
+      } catch { /* The image preview and download remain usable without file sharing. */ }
+      return { key, label, data, filename, file, shareable: canSaveImage(file) };
+    });
+    exportPages = pages;
     exportFocus = document.activeElement;
     previousOverflow = document.body.style.overflow;
-    overlayRoot.innerHTML = `<div class="overlay" role="dialog" aria-modal="true" aria-labelledby="image-title"><div class="overlay-inner"><div class="overlay-head"><h2 id="image-title">結果画像</h2><button id="close-modal">閉じる</button></div>${pages.map(page => `<section class="export-page"><h3>${page.label}</h3><img src="${page.data}" alt="ラウンドの${page.label}"><div class="overlay-footer"><a href="${page.data}" download="golf-round-${stamp}-${page.key}.png">${page.label}を保存</a></div></section>`).join('')}</div></div>`;
+    const help = pages.some(page => page.shareable) ? 'iPhoneでは「保存メニューを開く」→「画像を保存」で写真アプリに保存できます。' : 'iPhoneでは画像を長押しして「写真に保存」または「画像を保存」を選んでください。PNGダウンロードはファイルとして保存します。';
+    overlayRoot.innerHTML = `<div class="overlay" role="dialog" aria-modal="true" aria-labelledby="image-title"><div class="overlay-inner"><div class="overlay-head"><h2 id="image-title">結果画像</h2><button id="close-modal">閉じる</button></div><p class="export-help">${help}</p>${pages.map((page, i) => `<section class="export-page"><h3>${page.label}</h3><img src="${page.data}" alt="ラウンドの${page.label}"><div class="overlay-footer">${page.shareable ? `<button data-save-image="${i}" aria-label="${page.label}の保存メニューを開く">保存メニューを開く</button>` : ''}<p class="export-status" id="image-save-status-${i}" role="status" aria-live="polite"></p><a class="${page.shareable ? 'download-link' : ''}" href="${page.data}" download="${page.filename}">PNGをダウンロード</a></div></section>`).join('')}</div></div>`;
     elem.inert = true; document.body.style.overflow = 'hidden';
     document.getElementById('close-modal').addEventListener('click', closeExport);
     document.getElementById('close-modal').focus();
     overlayRoot.querySelector('.overlay').addEventListener('click', e => { if (e.target === e.currentTarget) closeExport(); });
   }
+  function canSaveImage(file) {
+    try { return !!file && typeof navigator.share === 'function' && typeof navigator.canShare === 'function' && navigator.canShare({ files: [file] }); }
+    catch { return false; }
+  }
+  async function saveImage(index) {
+    const pages = exportPages, page = pages[index];
+    if (!page) return;
+    const status = document.getElementById(`image-save-status-${index}`);
+    const fallback = '保存メニューを開けませんでした。画像を長押しして保存するか、PNGをダウンロードしてください。';
+    if (!canSaveImage(page.file)) { if (status) status.textContent = fallback; return; }
+    if (status) status.textContent = '';
+    try {
+      // Send only the PNG: adding a URL or text can change the iOS menu targets.
+      // Resolving the menu does not confirm that Photos was the selected target.
+      await navigator.share({ files: [page.file] });
+    } catch (error) {
+      if (exportPages === pages && status && error?.name !== 'AbortError') status.textContent = fallback;
+    }
+  }
+  overlayRoot.addEventListener('click', e => {
+    const button = e.target.closest('[data-save-image]');
+    if (button) return saveImage(Number(button.dataset.saveImage));
+  });
   overlayRoot.addEventListener('keydown', e => {
     if (e.key === 'Escape') closeExport();
     if (e.key === 'Tab') {
