@@ -57,6 +57,13 @@
     if (status) { status.textContent = saveStatus; status.className = `save-status${saveStatus === '保存できません' ? ' error' : ''}`; }
   }
   const sums = Core.analyze;
+  const courseName = index => Core.normalizeCourseNames(state.courseNames)[index];
+  function courseSettingsView() {
+    return `<details class="course-settings"><summary id="course-summary">前半 ${esc(courseName(0))} / 後半 ${esc(courseName(1))}</summary><div class="course-fields">${['前半', '後半'].map((label, i) => `<label>${label}<input data-course="${i}" aria-label="${label}のコース名" maxlength="20" placeholder="${Core.DEFAULT_COURSE_NAMES[i]}" value="${esc(courseName(i))}"></label>`).join('')}</div></details>`;
+  }
+  function backupView() {
+    return `<section class="surface result-backup"><h2>記録のバックアップ</h2><p>JSONには全ラウンドと目標設定をまとめて保存します。機種変更時は「履歴」の「JSON復元」から戻せます。全履歴を残していれば、Excelへの取り込みも最新版1つでOKです。</p><button class="secondary" data-action="export-json">JSONを保存</button></section>`;
+  }
   function render() {
     const focused = document.activeElement;
     const focusData = focused?.tagName === 'BUTTON' && elem.contains(focused) ? JSON.stringify({ ...focused.dataset }) : null;
@@ -73,11 +80,11 @@
   function inputView() {
     const h = state.holes[state.active], t = sums(state.holes);
     return `<section class="round-meta"><input id="date" type="date" aria-label="日付" value="${esc(state.date)}"><input id="place" aria-label="ゴルフ場" placeholder="ゴルフ場" maxlength="100" value="${esc(state.place)}"></section>
-      <div class="round-status"><span>${t.done}/18H 記録済み</span><span>${state.finished ? '終了済み' : 'ラウンド中'}</span></div>
+      ${courseSettingsView()}<div class="round-status"><span>${t.done}/18H 記録済み</span><span>${state.finished ? '終了済み' : 'ラウンド中'}</span></div>
       <section class="surface" id="hole-editor" aria-label="${state.active + 1}ホール目の記録">
         <div class="hole-heading"><button class="arrow" data-action="prev" aria-label="前のホール" ${state.active === 0 ? 'disabled' : ''}>‹</button><h1><button class="hole-select" data-action="holes" aria-expanded="${ui.holes}" aria-controls="hole-picker">${state.active + 1}H <span class="chevron" aria-hidden="true">⌄</span></button></h1><div class="hole-score" aria-live="polite"><strong>${fmt(score(h))}</strong><small>${scoreName(h) || '打'}</small></div><button class="arrow" data-action="next" aria-label="${state.active === 17 ? 'ラウンド終了' : '次のホール'}">›</button></div>
         <div class="hole-picker" id="hole-picker" ${ui.holes ? '' : 'hidden'}>${state.holes.map((hole, i) => `<button data-hole="${i}" class="hole-tile ${score(hole) !== null ? 'done' : started(hole) ? 'started' : ''} ${state.active === i ? 'current' : ''}" aria-label="${i + 1}H${score(hole) !== null ? ' 記録済' : started(hole) ? ' 入力途中' : ''}" ${state.active === i ? 'aria-current="step"' : ''}>${i + 1}</button>`).join('')}</div>
-        <div class="hole-tools"><div class="par-group" role="group" aria-label="PAR"><span class="par-label">PAR</span>${[3, 4, 5].map(p => `<button class="par-button ${h.par === p ? 'active' : ''}" data-par="${p}" aria-label="PAR ${p}" aria-pressed="${h.par === p}">${p}</button>`).join('')}</div><span class="hole-progress">${state.active < 9 ? 'OUT' : 'IN'}</span></div>
+        <div class="hole-tools"><div class="par-group" role="group" aria-label="PAR"><span class="par-label">PAR</span>${[3, 4, 5].map(p => `<button class="par-button ${h.par === p ? 'active' : ''}" data-par="${p}" aria-label="PAR ${p}" aria-pressed="${h.par === p}">${p}</button>`).join('')}</div><span class="hole-progress" id="current-course">${esc(courseName(state.active < 9 ? 0 : 1))}</span></div>
         ${counter('long', '50y以内まで', h.long, [1, 2, 3, 4, 5])}
         ${counter('short', '50y以内 → ON', h.short, [0, 1, 2, 3, 4], h)}
         ${counter('putts', 'パット', h.putts, [0, 1, 2, 3, 4])}
@@ -116,27 +123,27 @@
     const out = sums(state.holes.slice(0, 9)), inside = sums(state.holes.slice(9));
     const scoreDiff = Core.compare(state.holes, database.goals)[0];
     return `<section class="result-hero"><div class="result-meta"><h1>${esc(state.date)}</h1><span>${t.done}/18H</span></div><div class="result-score"><div class="big">${t.done ? t.score : '—'}<span class="unit">打</span></div><div class="result-relative"><strong>${t.done ? sgn(t.score - t.par) : '—'}</strong><span>PAR ${t.done ? t.par : '—'}</span></div></div>${state.place ? `<p class="result-place">${esc(state.place)}</p>` : ''}</section>
-      <div class="result-halves"><span>OUT <b>${out.done ? out.score : '—'}</b><small>${out.done}/9H</small></span><span>IN <b>${inside.done ? inside.score : '—'}</b><small>${inside.done}/9H</small></span></div>
+      <div class="result-halves"><span><span class="course-label">${esc(courseName(0))}</span> <b>${out.done ? out.score : '—'}</b><small>${out.done}/9H</small></span><span><span class="course-label">${esc(courseName(1))}</span> <b>${inside.done ? inside.score : '—'}</b><small>${inside.done}/9H</small></span></div>
       <div class="goal-gap"><span>目標 ${database.goals.score}打以下</span><strong class="${tone(scoreDiff)}">${scoreDiff.eligible ? `${signed(scoreDiff.diff)}打` : '入力不足'}</strong></div>
       ${comparisonView()}${ui.goals ? goalsView() : ''}
       <section class="surface"><div class="section-heading compact"><h2>OBの内訳</h2></div><div class="ob-summary"><span>ティーショット <b>${t.teeOB}回</b></span><span>2打目以降 <b>${t.lateOB}回</b></span></div><dl class="ob-directions">${[['left', '左'], ['right', '右'], ['other', 'その他']].map(([key, label]) => `<div><dt>${label}</dt><dd>${t.teeOBDirection[key]}回</dd></div>`).join('')}</dl><details class="help"><summary>方向内訳について</summary><p>ティーショットOBを、そのホールで記録した方向に分類します。方向未記録・まっすぐ・ショート単独は「その他」です。同一ホールで複数回OBした場合も、記録方向による分類です。</p></details></section>
       <section class="surface approach-analysis"><h2>50y以内からの2打以上率</h2><strong>${rate(t.approachRate)}</strong><p>ミス${t.approachMisses}回 / 対象${t.approachAttempts}回</p><div class="reference-metrics"><span>50y以上から直接ON <b>${t.directCount}回 / ${rate(t.directRate)}</b></span><span>3パット以上 <b>${t.threePutts}H</b></span></div></section>
       ${trendView()}
       <div class="section-heading"><h2>スコアカード</h2></div>${halfMatrix(0)}${halfMatrix(9)}
-      <div class="result-actions"><button class="primary" data-action="export">画像を保存</button><button class="secondary" data-action="resume">記録を再開</button></div>`;
+      <div class="result-actions"><button class="primary" data-action="export">画像を保存</button><button class="secondary" data-action="resume">記録を再開</button></div>${backupView()}`;
   }
   const tone = row => row.good === null ? 'neutral' : row.good ? 'good' : 'bad';
   function comparisonView() {
-    return `<section class="comparison-section"><div class="section-heading"><h2>目標と実績</h2><button class="text-button" data-action="goals">目標設定</button></div><div class="scope-tabs" role="group" aria-label="比較範囲">${[['all', '18H'], ['out', 'OUT'], ['in', 'IN']].map(([key, label]) => `<button data-scope="${key}" class="${ui.scope === key ? 'active' : ''}" aria-pressed="${ui.scope === key}">${label}</button>`).join('')}</div><div class="comparison-wrap"><table class="comparison-table"><thead><tr><th scope="col">指標</th><th scope="col">実績</th><th scope="col">目標</th><th scope="col">差分</th></tr></thead><tbody>${Core.compare(state.holes, database.goals, ui.scope).map(row => `<tr data-metric="${row.key}"><th scope="row">${row.label}</th><td>${row.actual === null ? '対象なし' : `${number(row.actual)}${row.unit}`}</td><td>${number(row.target)}${row.unit}${row.highIsGood ? '以上' : '以下'}</td><td class="${tone(row)}">${row.diff === null ? row.actual === null ? '—' : '入力不足' : `${signed(row.diff)}${row.diffUnit}`}</td></tr>`).join('')}</tbody></table></div><details class="help"><summary>集計条件</summary><p>打数と率は入力完了ホールから計算します。直接ONは50y以内の対象外。途中終了時、打数・OBの目標差分は対象の9H/18Hが揃うまで表示しません。OUT/INの目標は等分（スコアの端数はOUTへ配分）。目標は分析用の目安で、指標同士は合算しません。</p></details></section>`;
+    return `<section class="comparison-section"><div class="section-heading"><h2>目標と実績</h2><button class="text-button" data-action="goals">目標設定</button></div><div class="scope-tabs" role="group" aria-label="比較範囲">${[['all', '18H'], ['out', courseName(0)], ['in', courseName(1)]].map(([key, label]) => `<button data-scope="${key}" class="${ui.scope === key ? 'active' : ''}" aria-pressed="${ui.scope === key}">${esc(label)}</button>`).join('')}</div><div class="comparison-wrap"><table class="comparison-table"><thead><tr><th scope="col">指標</th><th scope="col">実績</th><th scope="col">目標</th><th scope="col">差分</th></tr></thead><tbody>${Core.compare(state.holes, database.goals, ui.scope).map(row => `<tr data-metric="${row.key}"><th scope="row">${row.label}</th><td>${row.actual === null ? '対象なし' : `${number(row.actual)}${row.unit}`}</td><td>${number(row.target)}${row.unit}${row.highIsGood ? '以上' : '以下'}</td><td class="${tone(row)}">${row.diff === null ? row.actual === null ? '—' : '入力不足' : `${signed(row.diff)}${row.diffUnit}`}</td></tr>`).join('')}</tbody></table></div><details class="help"><summary>集計条件</summary><p>打数と率は入力完了ホールから計算します。直接ONは50y以内の対象外。途中終了時、打数・OBの目標差分は対象の9H/18Hが揃うまで表示しません。前後半の目標は等分（スコアの端数は前半へ配分）。目標は分析用の目安で、指標同士は合算しません。</p></details></section>`;
   }
   function goalsView() {
-    const fields = [['score', '総スコア（打以下）', 1, 1620], ['long', '50yまで（打以下 / 18H）', 0, 540], ['ob', 'OB（回以下 / 18H）', 0, 162], ['approachRate', '50y以内2打以上率（%以下）', 0, 100], ['putts', 'パット（打以下 / 18H）', 0, 540], ['bogeyOnHoles', 'ボギーオン以内（H以上 / 18H）', 0, 18]];
+    const fields = [['score', '総スコア（打以下）', 1, 1620], ['ob', 'OB（回以下 / 18H）', 0, 162], ['approachRate', '50y以内2打以上率（%以下）', 0, 100], ['putts', 'パット（打以下 / 18H）', 0, 540], ['bogeyOnHoles', 'ボギーオン以内（H以上 / 18H）', 0, 18]];
     return `<section class="surface goals-panel"><h2>目標設定</h2><div class="goals-grid">${fields.map(([key, label, min, max]) => `<label>${label}<input data-goal="${key}" type="number" inputmode="${key === 'approachRate' ? 'decimal' : 'numeric'}" min="${min}" max="${max}" step="${key === 'approachRate' ? '0.1' : '1'}" value="${esc(ui.goalDraft[key])}"></label>`).join('')}</div><div class="result-actions"><button class="primary" data-action="save-goals">保存</button><button class="secondary" data-action="goals">キャンセル</button></div></section>`;
   }
   function halfMatrix(start) {
     const holes = state.holes.slice(start, start + 9), t = sums(holes);
     const rows = [['H', holes.map((_, i) => start + i + 1), 'head'], ['PAR', holes.map(h => h.par)], ['50yまで', holes.map(h => fmt(h.long))], ['50y→ON', holes.map(h => fmt(h.short))], ['パット', holes.map(h => fmt(h.putts))], ['スコア', holes.map(h => fmt(score(h))), 'score'], ['OB', holes.map(h => h.obTee + h.obLater)]];
-    return `<section class="surface half-section"><div class="half-head"><h3>${start === 0 ? 'OUT' : 'IN'}</h3><strong>${t.done ? t.score : '—'}<small>${t.done}/9H</small></strong></div><div class="matrix">${rows.map(([label, values, kind]) => `<div class="matrix-label">${label}</div>${values.map((value, i) => kind === 'head' ? `<button class="matrix-cell" data-hole="${start + i}" aria-label="${start + i + 1}Hを編集">${value}</button>` : `<div class="matrix-cell ${kind || ''} ${kind === 'score' && score(holes[i]) > holes[i].par + 1 ? 'bad' : ''} ${value === '—' ? 'muted' : ''}">${value}</div>`).join('')}`).join('')}</div></section>`;
+    return `<section class="surface half-section"><div class="half-head"><h3>${esc(courseName(start === 0 ? 0 : 1))}</h3><strong>${t.done ? t.score : '—'}<small>${t.done}/9H</small></strong></div><div class="matrix">${rows.map(([label, values, kind]) => `<div class="matrix-label">${label}</div>${values.map((value, i) => kind === 'head' ? `<button class="matrix-cell" data-hole="${start + i}" aria-label="${start + i + 1}Hを編集">${value}</button>` : `<div class="matrix-cell ${kind || ''} ${kind === 'score' && score(holes[i]) > holes[i].par + 1 ? 'bad' : ''} ${value === '—' ? 'muted' : ''}">${value}</div>`).join('')}`).join('')}</div></section>`;
   }
   function shotStats() {
     return sums(state.holes);
@@ -222,6 +229,13 @@
   elem.addEventListener('input', e => {
     if (e.target.id === 'date') { state.date = e.target.value; save(); }
     if (e.target.id === 'place') { state.place = e.target.value; save(); }
+    if (['0', '1'].includes(e.target.dataset?.course)) {
+      const index = Number(e.target.dataset.course);
+      state.courseNames[index] = e.target.value.trim().slice(0, 20) || Core.DEFAULT_COURSE_NAMES[index];
+      save();
+      document.getElementById('course-summary').textContent = `前半 ${courseName(0)} / 後半 ${courseName(1)}`;
+      document.getElementById('current-course').textContent = courseName(state.active < 9 ? 0 : 1);
+    }
     if (e.target.dataset?.goal && ui.goalDraft && Object.hasOwn(ui.goalDraft, e.target.dataset.goal)) {
       ui.goalDraft[e.target.dataset.goal] = e.target.value === '' ? null : Number(e.target.value);
     }
@@ -340,8 +354,8 @@
     text(t.done ? sgn(t.score - t.par) : '—', 1125, 210, 34, '#fff', 750, 'right');
     text(`${t.done}/18H  ·  PAR ${t.done ? t.par : '—'}`, 1125, 258, 22, '#c9dfc8', 500, 'right');
     const out = sums(state.holes.slice(0, 9)), inside = sums(state.holes.slice(9));
-    text(`OUT ${out.done ? out.score : '—'} (${out.done}/9H)`, 66, 328, 25, ink, 700);
-    text(`IN ${inside.done ? inside.score : '—'} (${inside.done}/9H)`, 1134, 328, 25, ink, 700, 'right');
+    text(`${courseName(0)} ${out.done ? out.score : '—'} (${out.done}/9H)`, 66, 328, 25, ink, 700, 'left', 500);
+    text(`${courseName(1)} ${inside.done ? inside.score : '—'} (${inside.done}/9H)`, 1134, 328, 25, ink, 700, 'right', 500);
     if (kind === 'analysis') {
       text('目標と実績 · 18H', 60, 380, 29, ink, 800);
       rect(36, 398, 1128, 370, '#fff');
@@ -360,8 +374,8 @@
       text('50y以内からの2打以上率', 636, 835, 25, ink, 800); text(rate(t.approachRate), 636, 901, 48, green, 800);
       text(`ミス${t.approachMisses}回 / 対象${t.approachAttempts}回`, 636, 949, 24, muted);
       text(`直接ON ${t.directCount}回（${rate(t.directRate)}）`, 636, 1009, 23, muted);
-      rect(36, 1060, 1128, 448, '#fff'); text('OUT / IN · 実績（目標差）', 60, 1108, 26, ink, 800);
-      text('OUT', 760, 1151, 23, muted, 700, 'right'); text('IN', 1130, 1151, 23, muted, 700, 'right');
+      rect(36, 1060, 1128, 448, '#fff'); text('前半 / 後半 · 実績（目標差）', 60, 1108, 26, ink, 800);
+      text(courseName(0), 760, 1151, 23, muted, 700, 'right', 320); text(courseName(1), 1130, 1151, 23, muted, 700, 'right', 320);
       const outRows = Core.compare(state.holes, database.goals, 'out'), inRows = Core.compare(state.holes, database.goals, 'in');
       outRows.forEach((row, i) => {
         const y = 1200 + i * 49;
@@ -373,7 +387,7 @@
     }
     function matrix(start, y) {
       const holes = state.holes.slice(start, start + 9), total = sums(holes);
-      rect(36, y, 1128, 450, '#fff'); text(start === 0 ? 'OUT' : 'IN', 66, y + 46, 28, ink, 800);
+      rect(36, y, 1128, 450, '#fff'); text(courseName(start === 0 ? 0 : 1), 66, y + 46, 28, ink, 800, 'left', 700);
       text(`${total.done ? total.score : '—'} 打  ·  ${total.done}/9H`, 1126, y + 46, 25, green, 700, 'right');
       const rows = [['H', holes.map((_, i) => start + i + 1)], ['PAR', holes.map(h => h.par)], ['50yまで', holes.map(h => fmt(h.long))], ['50y→ON', holes.map(h => fmt(h.short))], ['パット', holes.map(h => fmt(h.putts))], ['スコア', holes.map(h => fmt(score(h)))], ['OB', holes.map(h => h.obTee + h.obLater)], ['B-on', holes.map(h => bogeyOn(h) === null ? '—' : bogeyOn(h) ? '○' : '−')], ['ティー方向', holes.map(h => h.tee ? TEE[h.tee] : '—')], ['ティー短', holes.map(h => h.teeShort ? 'ショート' : '—')], ['使用クラブ', holes.map(h => ({driver:'1W',wood_ut:'W/UT',iron:'I',wedge:'WG'})[h.teeClub] || '—')]];
       rows.forEach(([label, values], ri) => {

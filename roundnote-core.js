@@ -7,13 +7,15 @@
   'use strict';
 
   const SCHEMA_VERSION = 2;
-  const DEFAULT_GOALS = Object.freeze({ score: 99, long: 40, ob: 2, approachRate: 30, putts: 36, bogeyOnHoles: 12 });
+  const DEFAULT_GOALS = Object.freeze({ score: 99, ob: 2, approachRate: 30, putts: 36, bogeyOnHoles: 12 });
+  const DEFAULT_COURSE_NAMES = Object.freeze(['OUT', 'IN']);
+  const normalizeCourseNames = value => DEFAULT_COURSE_NAMES.map((fallback, i) => typeof value?.[i] === 'string' && value[i].trim() ? value[i].trim().slice(0, 20) : fallback);
   const TEE = Object.freeze({ left: '左', straight: 'まっすぐ', right: '右' });
   const CLUBS = Object.freeze({ driver: 'ドライバー', wood_ut: 'ウッド・ユーティリティ', iron: 'アイアン', wedge: 'ウェッジ' });
   const APPROACH = Object.freeze({ short: 'ショート', over: 'オーバー', left: '左', right: '右', fat: 'ダフリ', thin: 'トップ' });
   const DIRECTION_KEYS = Object.keys(TEE);
   const NOTE_KEYS = Object.keys(APPROACH);
-  const GOAL_LIMITS = { score: [1, 1620], long: [0, 540], ob: [0, 162], approachRate: [0, 100], putts: [0, 540], bogeyOnHoles: [0, 18] };
+  const GOAL_LIMITS = { score: [1, 1620], ob: [0, 162], approachRate: [0, 100], putts: [0, 540], bogeyOnHoles: [0, 18] };
   const isObject = value => !!value && typeof value === 'object' && !Array.isArray(value);
   const finite = value => typeof value === 'number' && Number.isFinite(value);
   const validCount = (value, max) => Number.isInteger(value) && value >= 0 && value <= max;
@@ -66,6 +68,7 @@
     const now = new Date().toISOString();
     return { id: options.id || makeId(), date: typeof options.date === 'string' ? options.date : today(),
       place: typeof options.place === 'string' ? options.place.slice(0, 100) : '',
+      courseNames: normalizeCourseNames(options.courseNames),
       holes: Array.isArray(options.holes) && options.holes.length === 18 ? options.holes.map(normalizeHole) : Array.from({ length: 18 }, blankHole),
       active: validCount(options.active, 17) ? options.active : 0,
       finished: options.finished === true, createdAt: options.createdAt || now, updatedAt: options.updatedAt || now };
@@ -165,6 +168,7 @@
       assert(isObject(round), `${context}の形式が不正です。`);
       assertDate(round.date, `${context}の日付が不正です。`);
       assert(typeof round.place === 'string' && round.place.length <= 100, `${context}のゴルフ場名が不正です。`);
+      assert(round.courseNames === undefined || (Array.isArray(round.courseNames) && round.courseNames.length === 2 && round.courseNames.every(name => typeof name === 'string' && name.length <= 20 && name.trim().length > 0)), `${context}の前後半のコース名が不正です。`);
       assert(Array.isArray(round.holes) && round.holes.length === 18, `${context}は18ホール必要です。`);
       if (!legacy || round.id !== undefined) {
         assert(typeof round.id === 'string' && /^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/.test(round.id), `${context}のIDが不正です。`);
@@ -181,7 +185,7 @@
     return migrate(raw);
   }
 
-  function hasRoundData(round) { return !!round.place || round.finished || round.holes.some(started); }
+  function hasRoundData(round) { return !!round.place || round.finished || round.courseNames.some((name, i) => name !== DEFAULT_COURSE_NAMES[i]) || round.holes.some(started); }
   function mergeDatabases(current, incoming) {
     const existing = migrate(current), imported = validateImport(incoming);
     const hadData = existing.rounds.some(hasRoundData);
@@ -231,7 +235,6 @@
     const scoreTarget = half ? scope === 'out' ? Math.ceil(g.score / 2) : Math.floor(g.score / 2) : g.score;
     const rows = [
       ['score', '総スコア', a.done ? a.score : null, scoreTarget, '打', false, a.done === expected],
-      ['long', '50yまでの打数', a.done ? a.long : null, g.long / (half ? 2 : 1), '打', false, a.done === expected],
       ['ob', 'OB回数', a.obTotal, g.ob / (half ? 2 : 1), '回', false, a.done === expected],
       ['approachRate', '50y以内からの2打以上率', a.approachRate, g.approachRate, '%', false, a.approachRate !== null],
       ['putts', 'パット数', a.done ? a.putts : null, g.putts / (half ? 2 : 1), '打', false, a.done === expected],
@@ -245,6 +248,6 @@
     });
   }
 
-  return Object.freeze({ SCHEMA_VERSION, DEFAULT_GOALS, TEE, CLUBS, APPROACH, blankHole, newRound, normalizeHole, normalizeGoals,
+  return Object.freeze({ SCHEMA_VERSION, DEFAULT_GOALS, DEFAULT_COURSE_NAMES, normalizeCourseNames, TEE, CLUBS, APPROACH, blankHole, newRound, normalizeHole, normalizeGoals,
     migrate, validateImport, mergeDatabases, analyze, compare, score, onCount, bogeyOn, started, hasRoundData });
 });

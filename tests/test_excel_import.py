@@ -25,6 +25,42 @@ def make_round(identifier='round-one', day='2026-11-01'):
 
 
 class ImportTests(unittest.TestCase):
+    def test_custom_half_names_roundtrip_and_totals_use_position_not_labels(self):
+        record = make_round()
+        # Same names, formula prefixes and wildcard characters must remain literal.
+        for names in (['IN', 'OUT'], ['東', '西'], ['=*同名?', '=*同名?']):
+            record['courseNames'] = names
+            for h in record['holes'][9:]:
+                h['long'] = 3
+            normalized = excel.normalize_round(record)
+            excel.write_workbook([normalized], self.output)
+            workbook = load_workbook(self.output, data_only=True)
+            self.assertEqual(workbook[excel.DETAIL]['E2'].value, names[0])
+            self.assertEqual(workbook[excel.DETAIL]['E11'].value, names[1])
+            self.assertEqual(workbook[excel.HISTORY]['AE2'].value, 45)
+            self.assertEqual(workbook[excel.HISTORY]['AF2'].value, 54)
+            self.assertEqual(workbook[excel.HISTORY]['AI2'].value, names[0])
+            self.assertEqual(workbook[excel.HISTORY]['AJ2'].value, names[1])
+            workbook.close()
+            formulas = load_workbook(self.output)
+            self.assertEqual(formulas[excel.DETAIL]['E2'].data_type, 's')
+            self.assertNotIn('SUMIFS', formulas[excel.HISTORY]['AE2'].value)
+            self.assertIn('$Q$2:$Q$10', formulas[excel.HISTORY]['AE2'].value)
+            self.assertIn('$Q$11:$Q$19', formulas[excel.HISTORY]['AF2'].value)
+            formulas.close()
+            self.assertEqual(excel.previous_rounds(self.output)[0]['courseNames'], names)
+        for names in (None, [], ['東'], ['東', 3], ['東', ''], ['東', 'a' * 21]):
+            record['courseNames'] = names
+            with self.assertRaises(ValueError):
+                excel.normalize_round(record)
+
+    def test_old_goals_and_unnamed_courses_remain_compatible(self):
+        record = make_round()
+        data = {'schemaVersion': 2, 'currentRoundId': record['id'], 'rounds': [record], 'goals': {**excel.DEFAULT_GOALS, 'long': 40}}
+        self.assertEqual(excel.read_json(data)[0]['courseNames'], ['OUT', 'IN'])
+        del data['goals']['long']
+        self.assertEqual(excel.read_json(data)[0]['courseNames'], ['OUT', 'IN'])
+
     def test_tee_club_column_and_canonical_backup_preserve_all_four_choices(self):
         record = make_round()
         clubs = list(excel.CLUBS)

@@ -91,6 +91,56 @@ function assertNoRoundTotals(markup) {
 }
 
 // Input rules and corrections.
+test('course labels persist per round, safely render across results and PNGs, and restore from JSON', async () => {
+  const app = openApp({ storage: stored(database(completeRound())) });
+  app.input({ dataset: { course: '0' }, value: 'IN' });
+  app.input({ dataset: { course: '1' }, value: 'OUT' });
+  assert.deepEqual(app.state().courseNames, ['IN', 'OUT']);
+  app.input({ dataset: { course: '0' }, value: '東 <&>' });
+  app.input({ dataset: { course: '1' }, value: '西' });
+  assert.equal(app.nodes.get('current-course').textContent, '東 <&>');
+  const reloaded = openApp({ storage: app.storage });
+  assert.match(reloaded.markup(), /東 &lt;&amp;&gt;/);
+  reloaded.click({ hole: '9' }); assert.match(reloaded.markup(), /id="current-course">西</);
+  reloaded.click({ action: 'finish' });
+  for (const scope of ['all', 'out', 'in']) {
+    reloaded.click({ scope });
+    assert.match(reloaded.markup(), /data-scope="out"[^>]*>東 &lt;&amp;&gt;</);
+    assert.match(reloaded.markup(), /data-scope="in"[^>]*>西</);
+    assert.doesNotMatch(reloaded.markup(), /data-metric="long"/);
+  }
+  reloaded.click({ action: 'export' });
+  for (const canvas of reloaded.canvases) {
+    assert.ok(canvas.text.some(value => value.includes('東 <&>')));
+    assert.ok(canvas.text.some(value => value.includes('西')));
+  }
+  assert.ok(!reloaded.canvases[0].text.includes('50yまでの打数'));
+  reloaded.click({ action: 'export-json' });
+  const backup = await reloaded.downloadedJSON();
+  const restored = openApp(); await restored.import(backup);
+  assert.deepEqual(restored.state().courseNames, ['東 <&>', '西']);
+  reloaded.click({ action: 'new-round' });
+  assert.deepEqual(reloaded.state().courseNames, ['OUT', 'IN']);
+  assert.deepEqual(reloaded.database().rounds.find(r => r.id === backup.currentRoundId).courseNames, ['東 <&>', '西']);
+});
+
+test('results explain full-history JSON backups and export all rounds from the result screen', async () => {
+  const older = completeRound({ id: 'round-older', finished: true });
+  const app = openApp({ storage: stored(database(completeRound({ finished: true }), [older], { long: 40 })) });
+  app.click({ view: 'result' });
+  assert.match(app.markup(), /記録のバックアップ/);
+  assert.match(app.markup(), /全ラウンドと目標設定/);
+  assert.match(app.markup(), /最新版1つ/);
+  app.click({ action: 'export-json' });
+  assert.equal((await app.downloadedJSON()).rounds.length, 2);
+  app.click({ action: 'goals' });
+  assert.doesNotMatch(app.markup(), /data-goal="long"|data-metric="long"/);
+  assert.match(app.markup(), /matrix-label">50yまで/);
+  app.click({ action: 'resume' });
+  assertNoRoundTotals(app.markup());
+  assert.doesNotMatch(app.markup(), /result-backup/);
+});
+
 test('tee directions render left-straight-right and a single optional club survives reload and JSON', async () => {
   const app = openApp();
   app.click({ action: 'review' });
@@ -245,9 +295,9 @@ test('direct ON is excluded from approach failure attempts and all-direct rounds
 test('target settings persist independently and zero is accepted as a target', () => {
   const app = openApp({ storage: stored(database(completeRound({ finished: true }))) }); app.click({ view: 'result' });
   app.click({ action: 'goals' });
-  for (const [goal, value] of Object.entries({ score: 95, long: 38, ob: 0, approachRate: 25, putts: 34, bogeyOnHoles: 14 })) app.input({ dataset: { goal }, value: String(value), valueAsNumber: value });
+  for (const [goal, value] of Object.entries({ score: 95, ob: 0, approachRate: 25, putts: 34, bogeyOnHoles: 14 })) app.input({ dataset: { goal }, value: String(value), valueAsNumber: value });
   app.click({ action: 'save-goals' });
-  assert.deepEqual(app.database().goals, { score: 95, long: 38, ob: 0, approachRate: 25, putts: 34, bogeyOnHoles: 14 });
+  assert.deepEqual(app.database().goals, { score: 95, ob: 0, approachRate: 25, putts: 34, bogeyOnHoles: 14 });
   const reloaded = openApp({ storage: app.storage }); reloaded.click({ view: 'result' });
   assert.match(reloaded.markup(), /95打|95<\/|95 <\/|95.*以下/);
   assert.equal(reloaded.database().goals.ob, 0);
@@ -295,7 +345,7 @@ test('independent component goals never recalculate the total score target', () 
   app.input({ dataset: { goal: 'putts' }, value: '50', valueAsNumber: 50 });
   app.click({ action: 'save-goals' });
   assert.equal(app.database().goals.score, 99);
-  assert.equal(app.database().goals.long, 50);
+  assert.equal(app.database().goals.long, undefined);
   assert.equal(app.database().goals.putts, 50);
 });
 
