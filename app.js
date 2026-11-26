@@ -5,7 +5,7 @@
   const KEY = isPreview ? 'roundnote-golf-ui-preview-v2' : 'roundnote-golf-v2';
   const LEGACY_KEY = isPreview ? 'roundnote-golf-ui-preview-v1' : 'roundnote-golf-v1';
   const { TEE, CLUBS, APPROACH } = Core;
-  const FIELDS = ['long', 'short', 'putts', 'obTee', 'obLater'];
+  const FIELDS = ['long', 'short', 'putts', 'obTee', 'obLater', 'bunker'];
   const TEE_CLUB_STYLES = {
     driver: { label: 'ドライバー', color: '#2d6950', ink: '#fff' },
     wood_ut: { label: 'ウッド・UT', color: '#8db79e', ink: '#193e2b' },
@@ -78,13 +78,19 @@
   }
   const sums = Core.analyze;
   const courseName = index => Core.normalizeCourseNames(state.courseNames)[index];
+  const holeNumber = index => Core.holeNumber(state, index);
+  function startSettingsView() {
+    const starts = Core.normalizeCourseStarts(state.courseNames, state.courseStarts);
+    return ['前半', '後半'].map((half, i) => `<div class="start-setting"><span>${half}の開始ホール番号</span><div class="start-options" role="group" aria-label="${half}の開始ホール番号">${[1, 10].map(n => `<button data-start-half="${i}" data-start="${n}" class="shot-choice ${starts[i] === n ? 'active' : ''}" aria-pressed="${starts[i] === n}" ${Core.automaticStart(courseName(i)) ? 'disabled' : ''}>${n}番から</button>`).join('')}</div></div>`).join('') + '<p class="numbering-help">INは10番、OUTは1番から自動設定。それ以外は前後半それぞれ選べます。</p>';
+  }
   function courseSettingsView() {
-    return `<details class="course-settings"><summary id="course-summary">前半 ${esc(courseName(0))} / 後半 ${esc(courseName(1))}</summary><div class="course-fields">${['前半', '後半'].map((label, i) => `<label>${label}<input data-course="${i}" aria-label="${label}のコース名" maxlength="20" placeholder="${Core.DEFAULT_COURSE_NAMES[i]}" value="${esc(courseName(i))}"></label>`).join('')}</div></details>`;
+    return `<details class="course-settings"><summary id="course-summary">前半 ${esc(courseName(0))} / 後半 ${esc(courseName(1))}</summary><div class="course-fields">${['前半', '後半'].map((label, i) => `<label>${label}<input data-course="${i}" aria-label="${label}のコース名" maxlength="20" placeholder="${Core.DEFAULT_COURSE_NAMES[i]}" value="${esc(courseName(i))}"></label>`).join('')}</div><div id="start-settings">${startSettingsView()}</div></details>`;
   }
   function backupView() {
     return `<section class="surface result-backup"><h2>記録のバックアップ</h2><p>JSONには全ラウンドと目標設定をまとめて保存します。機種変更時は「履歴」の「JSON復元」から戻せます。全履歴を残していれば、Excelへの取り込みも最新版1つでOKです。</p><button class="secondary" data-action="export-json">JSONを保存</button></section>`;
   }
   function render() {
+    const courseOpen = elem.querySelector('.course-settings')?.open;
     const focused = document.activeElement;
     const focusData = focused?.tagName === 'BUTTON' && elem.contains(focused) ? JSON.stringify({ ...focused.dataset }) : null;
     elem.innerHTML = `<header class="masthead"><div class="shell ${state.view === 'result' ? 'result-shell' : ''}"><span class="brand">ROUNDNOTE</span><span class="save-status${saveStatus === '保存できません' ? ' error' : ''}" id="save-status" role="status">${saveStatus}</span></div></header>
@@ -95,20 +101,21 @@
         ${state.view === 'input' ? inputView() : state.view === 'history' ? historyView() : resultView()}
         <footer class="footer-row"><details class="help"><summary>入力について</summary><p>スコア＝50y以内まで＋50y以内からON＋パット。罰打は各打数に含めます。OB欄は回数のみ。ティーのショートにはチョロ・ダフリなどの飛距離不足も含みます。</p></details><button class="text-button" data-action="new-round">新規ラウンド</button></footer>
       </main>`;
+    if (courseOpen && elem.querySelector('.course-settings')) elem.querySelector('.course-settings').open = true;
     if (focusData) [...elem.querySelectorAll('button')].find(b => JSON.stringify({ ...b.dataset }) === focusData)?.focus({ preventScroll: true });
   }
   function inputView() {
     const h = state.holes[state.active], t = sums(state.holes);
     return `<section class="round-meta"><input id="date" type="date" aria-label="日付" value="${esc(state.date)}"><input id="place" aria-label="ゴルフ場" placeholder="ゴルフ場" maxlength="100" value="${esc(state.place)}"></section>
       ${courseSettingsView()}<div class="round-status"><span>${t.done}/18H 記録済み</span><span>${state.finished ? '終了済み' : 'ラウンド中'}</span></div>
-      <section class="surface" id="hole-editor" aria-label="${state.active + 1}ホール目の記録">
-        <div class="hole-heading"><button class="arrow" data-action="prev" aria-label="前のホール" ${state.active === 0 ? 'disabled' : ''}>‹</button><h1><button class="hole-select" data-action="holes" aria-expanded="${ui.holes}" aria-controls="hole-picker">${state.active + 1}H <span class="chevron" aria-hidden="true">⌄</span></button></h1><div class="hole-score" aria-live="polite"><strong>${fmt(score(h))}</strong><small>${scoreName(h) || '打'}</small></div><button class="arrow" data-action="next" aria-label="${state.active === 17 ? 'ラウンド終了' : '次のホール'}">›</button></div>
-        <div class="hole-picker" id="hole-picker" ${ui.holes ? '' : 'hidden'}>${state.holes.map((hole, i) => `<button data-hole="${i}" class="hole-tile ${score(hole) !== null ? 'done' : started(hole) ? 'started' : ''} ${state.active === i ? 'current' : ''}" aria-label="${i + 1}H${score(hole) !== null ? ' 記録済' : started(hole) ? ' 入力途中' : ''}" ${state.active === i ? 'aria-current="step"' : ''}>${i + 1}</button>`).join('')}</div>
+      <section class="surface" id="hole-editor" aria-label="${holeNumber(state.active)}ホール目の記録">
+        <div class="hole-heading"><button class="arrow" data-action="prev" aria-label="前のホール" ${state.active === 0 ? 'disabled' : ''}>‹</button><h1><button class="hole-select" data-action="holes" aria-expanded="${ui.holes}" aria-controls="hole-picker">${holeNumber(state.active)}H <span class="chevron" aria-hidden="true">⌄</span></button></h1><div class="hole-score" aria-live="polite"><strong>${fmt(score(h))}</strong><small>${scoreName(h) || '打'}</small></div><button class="arrow" data-action="next" aria-label="${state.active === 17 ? 'ラウンド終了' : '次のホール'}">›</button></div>
+        <div class="hole-picker" id="hole-picker" ${ui.holes ? '' : 'hidden'}>${[0, 9].map(start => `<div class="hole-picker-half"><p>${start === 0 ? '前半' : '後半'} ${esc(courseName(start === 0 ? 0 : 1))}</p><div class="hole-picker-grid">${state.holes.slice(start, start + 9).map((hole, offset) => { const i = start + offset; return `<button data-hole="${i}" class="hole-tile ${score(hole) !== null ? 'done' : started(hole) ? 'started' : ''} ${state.active === i ? 'current' : ''}" aria-label="${esc(courseName(start === 0 ? 0 : 1))} ${holeNumber(i)}H${score(hole) !== null ? ' 記録済' : started(hole) ? ' 入力途中' : ''}" ${state.active === i ? 'aria-current="step"' : ''}>${holeNumber(i)}</button>`; }).join('')}</div></div>`).join('')}</div>
         <div class="hole-tools"><div class="par-group" role="group" aria-label="PAR"><span class="par-label">PAR</span>${[3, 4, 5].map(p => `<button class="par-button ${h.par === p ? 'active' : ''}" data-par="${p}" aria-label="PAR ${p}" aria-pressed="${h.par === p}">${p}</button>`).join('')}</div><span class="hole-progress" id="current-course">${esc(courseName(state.active < 9 ? 0 : 1))}</span></div>
         ${counter('long', '50y以内まで', h.long, [1, 2, 3, 4, 5])}
         ${counter('short', '50y以内 → ON', h.short, [0, 1, 2, 3, 4], h)}
         ${counter('putts', 'パット', h.putts, [0, 1, 2, 3, 4])}
-        <section class="ob-section" aria-label="OB回数"><div class="section-line"><h2>OB</h2><button class="info-button" data-action="ob-help" aria-label="OB入力の説明" aria-expanded="${ui.obHelp}" aria-controls="ob-help">ⓘ</button></div><p class="ob-help" id="ob-help" ${ui.obHelp ? '' : 'hidden'}>罰打は上の打数に含めます。ここでは回数だけを記録します。 <a href="https://www.randa.org/rog/the-rules-of-golf/rule-18" target="_blank" rel="noopener noreferrer">規則18</a></p>${obRow('obTee', 'ティーショット', h.obTee)}${obRow('obLater', '2打目以降', h.obLater)}</section>
+        <section class="ob-section" aria-label="OB回数"><div class="section-line"><h2>OB</h2><button class="info-button" data-action="ob-help" aria-label="OB入力の説明" aria-expanded="${ui.obHelp}" aria-controls="ob-help">ⓘ</button></div><p class="ob-help" id="ob-help" ${ui.obHelp ? '' : 'hidden'}>罰打は上の打数に含めます。ここでは回数だけを記録します。 <a href="https://www.randa.org/rog/the-rules-of-golf/rule-18" target="_blank" rel="noopener noreferrer">規則18</a></p>${obRow('obTee', 'ティーショット', h.obTee)}${obRow('obLater', '2打目以降', h.obLater)}${laterOBView(h)}<div class="bunker-counter">${obRow('bunker', 'バンカー回数', h.bunker)}</div><p class="numbering-help">バンカー・OBの回数はスコアに再加算しません。</p></section>
         ${shotReview(h)}
       </section><div class="input-actions"><button class="primary" data-action="next">${state.active === 17 ? 'ラウンド終了' : '次のホール →'}</button></div>`;
   }
@@ -116,20 +123,25 @@
     return `<section class="counter"><div class="counter-heading"><h2>${label}</h2><div class="value-control"><button data-field="${field}" data-step="-1" aria-label="${label}を1減らす" ${!finite(value) || value === 0 ? 'disabled' : ''}>−</button><strong aria-live="polite">${fmt(value)}</strong><button data-field="${field}" data-step="1" aria-label="${label}を1増やす" ${value === 30 ? 'disabled' : ''}>＋</button></div></div><div class="quick-values" role="group" aria-label="${label}">${quick.map(n => `<button data-field="${field}" data-setval="${n}" class="${value === n ? 'active' : ''}" aria-pressed="${value === n}" aria-label="${label} ${n}打">${n}</button>`).join('')}</div>${hole ? `<button class="direct-toggle ${hole.direct ? 'active' : ''}" data-action="direct" aria-pressed="${hole.direct}"><span class="check" aria-hidden="true">✓</span>50y超からON</button>` : ''}</section>`;
   }
   function obRow(field, label, value) {
-    return `<div class="ob-row"><span>${label}</span><div class="ob-stepper"><button data-field="${field}" data-step="-1" aria-label="${label}のOBを減らす" ${value === 0 ? 'disabled' : ''}>−</button><b aria-live="polite">${value}</b><button data-field="${field}" data-step="1" aria-label="${label}のOBを増やす" ${value === 9 ? 'disabled' : ''}>＋</button></div></div>`;
+    return `<div class="ob-row"><span>${label}</span><div class="ob-stepper"><button data-field="${field}" data-step="-1" aria-label="${label}${field === 'bunker' ? 'を' : 'のOBを'}減らす" ${!finite(value) || value === 0 ? 'disabled' : ''}>−</button><b aria-live="polite">${fmt(value)}</b><button data-field="${field}" data-step="1" aria-label="${label}${field === 'bunker' ? 'を' : 'のOBを'}増やす" ${value === 9 ? 'disabled' : ''}>＋</button></div></div>`;
+  }
+  function laterOBView(h) {
+    return h.laterOB.map((ob, i) => `<section class="later-ob-detail" aria-label="2打目以降のOB ${i + 1}回目"><h3>2打目以降のOB · ${i + 1}回目 <span class="badge">任意</span></h3>${[['direction', '方向', Core.OB_DIRECTIONS], ['club', '使用クラブ', Core.LATER_CLUBS]].map(([field, label, choices]) => `<div class="later-ob-field"><span>${label}</span><div class="later-ob-choices" role="group" aria-label="OB ${i + 1}回目の${label}">${Object.entries(choices).map(([key, name]) => `<button class="shot-choice ${ob[field] === key ? 'active' : ''}" data-later-ob="${i}" data-later-field="${field}" data-later-value="${key}" aria-pressed="${ob[field] === key}">${name}</button>`).join('')}</div></div>`).join('')}</section>`).join('');
   }
   function reviewSummary(h) {
-    const parts = [];
-    if (h.teeClub) parts.push(CLUBS[h.teeClub]);
-    if (h.tee) parts.push(`ティー：${TEE[h.tee]}`);
-    if (h.teeShort) parts.push('ティー：ショート');
-    if (!h.direct && h.approach !== null) parts.push(`50y：${h.approach.length ? h.approach.map(k => APPROACH[k]).join('・') : 'ミスなし'}`);
-    return parts.join(' / ');
+    const lines = [], tee = [], direction = [];
+    if (h.teeClub) tee.push(CLUBS[h.teeClub]);
+    if (h.tee) direction.push(TEE[h.tee]);
+    if (h.teeShort) direction.push('ショート');
+    if (direction.length) tee.push(direction.join('・'));
+    if (tee.length) lines.push(`ティーショット: ${tee.join('/')}`);
+    if (!h.direct && h.approach !== null) lines.push(`50y未満: ${h.approach.length ? h.approach.map(k => APPROACH[k]).join('・') : 'ミスなし'}`);
+    return lines.join('\n');
   }
   function shotReview(h) {
     const summary = reviewSummary(h);
     const missButton = (key, label) => `<button class="shot-choice ${key === 'none' ? h.approach?.length === 0 ? 'active' : '' : h.approach?.includes(key) ? 'active' : ''}" data-approach="${key}" aria-pressed="${key === 'none' ? h.approach?.length === 0 : h.approach?.includes(key) || false}" style="grid-area:${key === 'none' ? 'center' : key}">${label}</button>`;
-    return `<section class="shot-review"><button class="review-toggle" data-action="review" aria-expanded="${ui.review}" aria-controls="review-body"><span><span class="review-title">振り返り <span class="badge">任意</span></span>${summary ? `<span class="review-summary">${summary}</span>` : ''}</span><span class="chevron" aria-hidden="true">${ui.review ? '⌃' : '⌄'}</span></button>
+    return `<section class="shot-review"><button class="review-toggle" data-action="review" aria-expanded="${ui.review}" aria-controls="review-body"><span><span class="review-title">振り返り <span class="badge">任意</span></span>${summary ? `<span class="review-summary">${esc(summary)}</span>` : ''}</span><span class="chevron" aria-hidden="true">${ui.review ? '⌃' : '⌄'}</span></button>
       <div class="review-body" id="review-body" ${ui.review ? '' : 'hidden'}><div class="review-group"><h3>使用クラブ</h3><div class="club-choices" role="group" aria-label="ティーショットのクラブ">${Object.entries(CLUBS).map(([key, label]) => `<button class="shot-choice ${h.teeClub === key ? 'active' : ''}" data-tee-club="${key}" aria-pressed="${h.teeClub === key}">${label}</button>`).join('')}</div></div><div class="review-group"><h3>ティーショット</h3><div class="tee-choices" role="group" aria-label="ティーショットの方向">${Object.entries(TEE).map(([key, label]) => `<button class="shot-choice ${h.tee === key ? 'active' : ''}" data-tee="${key}" aria-pressed="${h.tee === key}">${label}</button>`).join('')}</div><button class="shot-choice tee-short ${h.teeShort ? 'active' : ''}" data-tee-short="true" aria-pressed="${h.teeShort === true}">ショート</button></div>
       ${!h.direct ? `<div class="review-group"><h3>50y以内 <span class="badge">複数選択</span></h3><div class="approach-map" role="group" aria-label="50y以内の方向">${missButton('over', 'オーバー')}${missButton('left', '左')}${missButton('none', 'ミスなし')}${missButton('right', '右')}${missButton('short', 'ショート')}</div><div class="contact-choices" role="group" aria-label="50y以内の当たり">${['fat', 'thin'].map(key => `<button class="shot-choice ${h.approach?.includes(key) ? 'active' : ''}" data-approach="${key}" aria-pressed="${h.approach?.includes(key) || false}">${APPROACH[key]}</button>`).join('')}</div></div>` : ''}
       ${h.teeClub || h.tee !== null || h.teeShort || (!h.direct && h.approach !== null) ? '<button class="text-button review-clear" data-action="clear-review">クリア</button>' : ''}</div></section>`;
@@ -162,8 +174,8 @@
   }
   function halfMatrix(start) {
     const holes = state.holes.slice(start, start + 9), t = sums(holes);
-    const rows = [['H', holes.map((_, i) => start + i + 1), 'head'], ['PAR', holes.map(h => h.par)], ['50yまで', holes.map(h => fmt(h.long)), 'long'], ['50y→ON', holes.map(h => fmt(h.short)), 'short'], ['パット', holes.map(h => fmt(h.putts)), 'putts'], ['スコア', holes.map(h => fmt(score(h))), 'score'], ['OB', holes.map(h => h.obTee + h.obLater), 'ob']];
-    return `<section class="surface half-section"><div class="half-head"><h3>${esc(courseName(start === 0 ? 0 : 1))}</h3><strong>${t.done ? t.score : '—'}<small>${t.done}/9H</small></strong></div><div class="matrix">${rows.map(([label, values, kind]) => `<div class="matrix-label">${label}</div>${values.map((value, i) => kind === 'head' ? `<button class="matrix-cell" data-hole="${start + i}" aria-label="${start + i + 1}Hを編集">${value}</button>` : `<div class="matrix-cell ${kind === 'score' ? 'score' : ''} ${scorecardTone(holes[i], kind)} ${value === '—' ? 'muted' : ''}">${value}</div>`).join('')}`).join('')}</div></section>`;
+    const rows = [['H', holes.map((_, i) => holeNumber(start + i)), 'head'], ['PAR', holes.map(h => h.par)], ['50yまで', holes.map(h => fmt(h.long)), 'long'], ['50y→ON', holes.map(h => fmt(h.short)), 'short'], ['パット', holes.map(h => fmt(h.putts)), 'putts'], ['スコア', holes.map(h => fmt(score(h))), 'score'], ['OB', holes.map(h => h.obTee + h.obLater), 'ob'], ['バンカー', holes.map(h => fmt(h.bunker))]];
+    return `<section class="surface half-section"><div class="half-head"><h3>${esc(courseName(start === 0 ? 0 : 1))}</h3><strong>${t.done ? t.score : '—'}<small>${t.done}/9H</small></strong></div><div class="matrix">${rows.map(([label, values, kind]) => `<div class="matrix-label">${label}</div>${values.map((value, i) => kind === 'head' ? `<button class="matrix-cell" data-hole="${start + i}" aria-label="${holeNumber(start + i)}Hを編集">${value}</button>` : `<div class="matrix-cell ${kind === 'score' ? 'score' : ''} ${scorecardTone(holes[i], kind)} ${value === '—' ? 'muted' : ''}">${value}</div>`).join('')}`).join('')}</div></section>`;
   }
   function shotStats() {
     return sums(state.holes);
@@ -278,10 +290,12 @@
   }
   elem.addEventListener('change', async e => {
     if (e.target.id === 'import-file') await importJSON(e.target.files?.[0]);
+    if (['0', '1'].includes(e.target.dataset?.course)) render();
   });
   function changeVal(field, value) {
     const h = state.holes[state.active];
-    h[field] = value === null ? null : Math.max(0, Math.min(field.startsWith('ob') ? 9 : 30, value));
+    h[field] = value === null ? null : Math.max(0, Math.min(field.startsWith('ob') || field === 'bunker' ? 9 : 30, value));
+    if (field === 'obLater') h.laterOB = Array.from({ length: h.obLater }, (_, i) => h.laterOB[i] || Core.blankLaterOB());
     if (field === 'short') h.direct = h.short === 0;
     save(); render();
   }
@@ -298,7 +312,9 @@
     if (['0', '1'].includes(e.target.dataset?.course)) {
       const index = Number(e.target.dataset.course);
       state.courseNames[index] = e.target.value.trim().slice(0, 20) || Core.DEFAULT_COURSE_NAMES[index];
+      state.courseStarts = Core.normalizeCourseStarts(state.courseNames, state.courseStarts);
       save();
+      document.getElementById('start-settings').innerHTML = startSettingsView();
       document.getElementById('course-summary').textContent = `前半 ${courseName(0)} / 後半 ${courseName(1)}`;
       document.getElementById('current-course').textContent = courseName(state.active < 9 ? 0 : 1);
     }
@@ -309,6 +325,14 @@
   elem.addEventListener('click', e => {
     const button = e.target.closest('button'); if (!button || button.disabled) return;
     const d = button.dataset, h = state.holes[state.active];
+    if (['0', '1'].includes(d.startHalf) && [1, 10].includes(Number(d.start)) && !Core.automaticStart(courseName(Number(d.startHalf)))) {
+      state.courseStarts[Number(d.startHalf)] = Number(d.start); save(); render(); return;
+    }
+    if (d.laterOb !== undefined) {
+      const ob = h.laterOB[Number(d.laterOb)], choices = d.laterField === 'direction' ? Core.OB_DIRECTIONS : d.laterField === 'club' ? Core.LATER_CLUBS : null;
+      if (ob && choices && Object.hasOwn(choices, d.laterValue)) { ob[d.laterField] = ob[d.laterField] === d.laterValue ? null : d.laterValue; save(); render(); }
+      return;
+    }
     if (state.finished && (d.teeFilter === 'all' || Object.hasOwn(CLUBS, d.teeFilter))) {
       teeShotData();
       ui.teeClubs = d.teeFilter === 'all' ? Object.keys(CLUBS) : ui.teeClubs.includes(d.teeFilter) ? ui.teeClubs.filter(key => key !== d.teeFilter) : [...ui.teeClubs, d.teeFilter];
@@ -376,7 +400,7 @@
       { par: 3, long: 1, short: 1, putts: 3, tee: 'right', approach: ['short'] },
       { long: 2, short: 1, putts: 2, tee: 'straight', approach: [] }
     ];
-    sample.holes.forEach((h, i) => Object.assign(h, JSON.parse(JSON.stringify(six[i % 6]))));
+    sample.holes = sample.holes.map((h, i) => Core.normalizeHole({ ...h, ...JSON.parse(JSON.stringify(six[i % 6])) }));
     sample.finished = true; sample.view = 'result';
     database.rounds = database.rounds.filter(r => r.id !== state.id); database.rounds.push(sample); state = sample;
     ui.review = false; ui.holes = false; ui.scope = 'all'; save(); render(); window.scrollTo(0, 0);
@@ -493,9 +517,9 @@
     }
     function matrix(start, y) {
       const holes = state.holes.slice(start, start + 9), total = sums(holes);
-      rect(36, y, 1128, 450, '#fff'); text(courseName(start === 0 ? 0 : 1), 66, y + 46, 28, ink, 800, 'left', 700);
+      rect(36, y, 1128, 454, '#fff'); text(courseName(start === 0 ? 0 : 1), 66, y + 46, 28, ink, 800, 'left', 700);
       text(`${total.done ? total.score : '—'} 打  ·  ${total.done}/9H`, 1126, y + 46, 25, green, 700, 'right');
-      const rows = [['H', holes.map((_, i) => start + i + 1)], ['PAR', holes.map(h => h.par)], ['50yまで', holes.map(h => fmt(h.long)), 'long'], ['50y→ON', holes.map(h => fmt(h.short)), 'short'], ['パット', holes.map(h => fmt(h.putts)), 'putts'], ['スコア', holes.map(h => fmt(score(h))), 'score'], ['OB', holes.map(h => h.obTee + h.obLater), 'ob'], ['B-on', holes.map(h => bogeyOn(h) === null ? '—' : bogeyOn(h) ? '○' : '−')], ['ティー方向', holes.map(h => h.tee ? TEE[h.tee] : '—')], ['ティー短', holes.map(h => h.teeShort ? 'ショート' : '—')], ['使用クラブ', holes.map(h => ({driver:'1W',wood_ut:'W/UT',iron:'I',wedge:'WG'})[h.teeClub] || '—')]];
+      const rows = [['H', holes.map((_, i) => holeNumber(start + i))], ['PAR', holes.map(h => h.par)], ['50yまで', holes.map(h => fmt(h.long)), 'long'], ['50y→ON', holes.map(h => fmt(h.short)), 'short'], ['パット', holes.map(h => fmt(h.putts)), 'putts'], ['スコア', holes.map(h => fmt(score(h))), 'score'], ['OB', holes.map(h => h.obTee + h.obLater), 'ob'], ['B-on', holes.map(h => bogeyOn(h) === null ? '—' : bogeyOn(h) ? '○' : '−')], ['ティー方向', holes.map(h => h.tee ? TEE[h.tee] : '—')], ['ティー短', holes.map(h => h.teeShort ? 'ショート' : '—')], ['使用クラブ', holes.map(h => ({driver:'1W',wood_ut:'W/UT',iron:'I',wedge:'WG'})[h.teeClub] || '—')], ['バンカー', holes.map(h => fmt(h.bunker))]];
       rows.forEach(([label, values, field], ri) => {
         const yy = y + 70 + ri * 32;
         rect(60, yy, 1080, 30, ri === 5 ? '#e3efdf' : ri % 2 === 0 ? '#f3f7ee' : '#fff');

@@ -315,3 +315,36 @@ test('merged histories are capped before returning data that could not be reload
   assert.equal(merged.rounds.length, 2000);
   assert.equal(merged.rounds.find(r => r.id === 'round-1').place, '更新');
 });
+
+test('bunker counts and individual later OB details survive strict JSON without changing score or legacy IDs', () => {
+  const old = round();
+  old.holes.forEach(h => { delete h.bunker; delete h.laterOB; });
+  delete old.courseStarts;
+  const restored = Core.validateImport(makeDatabase(old));
+  assert.equal(restored.rounds[0].holes[0].bunker, null);
+  const data = round({holes: full({bunker: 2, obLater: 2, laterOB: [{direction:'left',club:'wood_ut'},{direction:'other',club:'wedge'}]})});
+  const output = Core.validateImport(JSON.stringify(makeDatabase(data))).rounds[0];
+  assert.deepEqual(output.holes[0].laterOB, data.holes[0].laterOB);
+  assert.equal(output.holes[0].bunker, 2);
+  assert.equal(Core.score(output.holes[0]), 5);
+  for (const mutate of [h=>h.bunker=-1, h=>h.bunker=10, h=>h.laterOB.pop(), h=>h.laterOB[0].club='driver', h=>h.laterOB[0].direction='straight', h=>h.laterOB[0].direction=['left'], h=>h.laterOB[0].club=['iron']]) {
+    const invalid = JSON.parse(JSON.stringify(makeDatabase(data))); mutate(invalid.rounds[0].holes[0]);
+    assert.throws(()=>Core.validateImport(invalid));
+  }
+  const legacy = {date:old.date,place:old.place,holes:old.holes};
+  const id = Core.migrate(legacy).rounds[0].id;
+  legacy.holes[0].bunker=2;
+  assert.equal(Core.migrate(legacy).rounds[0].id,id);
+});
+
+test('course numbers preserve playing order with IN first and independent custom starts', () => {
+  const r = round({courseNames:['IN','OUT']});
+  assert.deepEqual([0,8,9,17].map(i=>Core.holeNumber(r,i)),[10,18,1,9]);
+  for(const starts of [[1,1],[10,1],[10,10]]) {
+    const custom=round({courseNames:['東','西'],courseStarts:starts});
+    const restored=Core.validateImport(makeDatabase(custom)).rounds[0];
+    assert.deepEqual(restored.courseStarts,starts);
+    assert.deepEqual([0,8,9,17].map(i=>Core.holeNumber(restored,i)),[starts[0],starts[0]+8,starts[1],starts[1]+8]);
+  }
+  const bad=makeDatabase(r);bad.rounds[0].courseStarts=[0,10];assert.throws(()=>Core.validateImport(bad));
+});

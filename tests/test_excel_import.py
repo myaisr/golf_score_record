@@ -25,6 +25,36 @@ def make_round(identifier='round-one', day='2026-11-01'):
 
 
 class ImportTests(unittest.TestCase):
+    def test_hole_details_and_in_first_numbering_survive_workbook_updates(self):
+        record = make_round()
+        record['courseNames'] = ['IN', 'OUT']
+        h = record['holes'][0]
+        h.update(bunker=2, obLater=2, laterOB=[{'direction': 'left', 'club': 'wood_ut'}, {'direction': 'right', 'club': 'wedge'}])
+        normalized = excel.normalize_round(record)
+        excel.write_workbook([normalized], self.output)
+        book = load_workbook(self.output, data_only=True)
+        detail = book[excel.DETAIL]
+        self.assertEqual([detail.cell(row, 4).value for row in (2, 10, 11, 19)], [10, 18, 1, 9])
+        self.assertEqual(detail['AE2'].value, 2)
+        self.assertIn('ウッド・ユーティリティ/左', detail['AF2'].value)
+        book.close()
+        restored = excel.previous_rounds(self.output)[0]
+        self.assertEqual(restored['holes'][0]['laterOB'], h['laterOB'])
+        self.assertEqual(restored['holes'][0]['bunker'], 2)
+        record['courseNames'] = ['東', '西']
+        record['courseStarts'] = [1, 1]
+        normalized = excel.normalize_round(record)
+        self.assertEqual(normalized['courseStarts'], [1, 1])
+        core = "const c=require('./roundnote-core');const r=c.validateImport(JSON.parse(process.argv[1])).rounds[0];console.log(JSON.stringify(r));"
+        data = {'schemaVersion': 2, 'goals': excel.DEFAULT_GOALS, 'currentRoundId': record['id'], 'rounds': [record]}
+        js = json.loads(subprocess.check_output(['node', '-e', core, json.dumps(data)], cwd=ROOT, text=True))
+        self.assertEqual(normalized, js)
+        for key, value in [('bunker', -1), ('laterOB', []), ('laterOB', [{'direction': 'left', 'club': 'driver'}, {'direction': None, 'club': None}])]:
+            invalid = json.loads(json.dumps(record))
+            invalid['holes'][0][key] = value
+            with self.assertRaises(ValueError):
+                excel.normalize_round(invalid)
+
     def test_custom_half_names_roundtrip_and_totals_use_position_not_labels(self):
         record = make_round()
         # Same names, formula prefixes and wildcard characters must remain literal.

@@ -252,3 +252,22 @@ button.matrix-cell { border: 0; min-height: 36px; background: #e8f1e6; color: #3
 .result-backup h2 { margin: 0 0 10px; font-size: 14px; }
 .result-backup p { margin: 0 0 14px; color: var(--muted); font-size: 12px; line-height: 1.8; }
 @media (max-width: 560px) { .comparison-table { font-size: 11px; }.comparison-table th, .comparison-table td { padding: 12px 6px; }.comparison-table tbody th { font-size: 11px; }.comparison-table th:first-child { width: 35%; } }
+
+/* Course numbering and optional per-OB details. */
+.review-summary { white-space: pre-line; }
+.start-setting { margin: 12px 0; font-size: 11px; }
+.start-options { display: grid; grid-template-columns: 1fr 1fr; gap: 7px; margin-top: 7px; }
+.start-options button:disabled { opacity: 1; cursor: default; }
+.start-options button:disabled:not(.active) { background: #f4f7f1; color: #758773; }
+.numbering-help { font-size: 11px; color: var(--muted); line-height: 1.8; }
+.later-ob-detail { margin: 4px 0 12px; padding: 14px; border: 1px solid var(--line); border-radius: 10px; background: #f8faf5; }
+.later-ob-detail h3 { display: flex; justify-content: space-between; margin: 0 0 12px; font-size: 12px; }
+.later-ob-field + .later-ob-field { margin-top: 12px; }
+.later-ob-field > span { display: block; font-size: 11px; color: var(--muted); margin-bottom: 7px; }
+.later-ob-choices { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 5px; }
+.later-ob-choices button { font-size: 11px; overflow-wrap: anywhere; }
+.bunker-counter { border-top: 1px solid var(--line); margin-top: 12px; padding-top: 7px; }
+
+.hole-picker { display: block; }
+.hole-picker-half p { margin: 8px 0; font-size: 11px; color: var(--muted); }
+.hole-picker-grid { display: grid; grid-template-columns: repeat(9, minmax(0, 1fr)); gap: 4px; }
