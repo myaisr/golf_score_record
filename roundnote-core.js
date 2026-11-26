@@ -12,6 +12,12 @@
   const normalizeCourseNames = value => DEFAULT_COURSE_NAMES.map((fallback, i) => typeof value?.[i] === 'string' && value[i].trim() ? value[i].trim().slice(0, 20) : fallback);
   const TEE = Object.freeze({ left: '左', straight: 'まっすぐ', right: '右' });
   const CLUBS = Object.freeze({ driver: 'ドライバー', wood_ut: 'ウッド・ユーティリティ', iron: 'アイアン', wedge: 'ウェッジ' });
+  const LATER_CLUBS = Object.freeze(Object.fromEntries(Object.entries(CLUBS).filter(([key]) => key !== 'driver')));
+  const OB_DIRECTIONS = Object.freeze({ left: '左', right: '右', other: 'その他' });
+  const automaticStart = name => ({ IN: 10, OUT: 1 })[String(name).trim().toUpperCase()] || null;
+  const normalizeCourseStarts = (names, starts) => normalizeCourseNames(names).map((name, i) => automaticStart(name) || ([1, 10].includes(starts?.[i]) ? starts[i] : i * 9 + 1));
+  const holeNumber = (round, index) => normalizeCourseStarts(round.courseNames, round.courseStarts)[index < 9 ? 0 : 1] + index % 9;
+  const blankLaterOB = () => ({ direction: null, club: null });
   const APPROACH = Object.freeze({ short: 'ショート', over: 'オーバー', left: '左', right: '右', fat: 'ダフリ', thin: 'トップ' });
   const DIRECTION_KEYS = Object.keys(TEE);
   const NOTE_KEYS = Object.keys(APPROACH);
@@ -19,7 +25,7 @@
   const isObject = value => !!value && typeof value === 'object' && !Array.isArray(value);
   const finite = value => typeof value === 'number' && Number.isFinite(value);
   const validCount = (value, max) => Number.isInteger(value) && value >= 0 && value <= max;
-  const blankHole = () => ({ par: 4, long: null, short: null, putts: null, obTee: 0, obLater: 0, direct: false, tee: null, teeShort: false, approach: null, teeClub: null });
+  const blankHole = () => ({ par: 4, long: null, short: null, putts: null, obTee: 0, obLater: 0, direct: false, tee: null, teeShort: false, approach: null, teeClub: null, bunker: 0, laterOB: [] });
   const today = () => {
     const date = new Date();
     return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
@@ -27,7 +33,7 @@
   const score = h => [h.long, h.short, h.putts].every(finite) ? h.long + h.short + h.putts : null;
   const onCount = h => [h.long, h.short].every(finite) ? h.long + h.short : null;
   const bogeyOn = h => onCount(h) === null ? null : onCount(h) <= h.par - 1;
-  const started = h => [h.long, h.short, h.putts].some(finite) || h.obTee > 0 || h.obLater > 0 || h.tee !== null || h.teeShort === true || h.approach !== null || h.par !== 4 || !!h.teeClub;
+  const started = h => [h.long, h.short, h.putts].some(finite) || h.obTee > 0 || h.obLater > 0 || h.bunker > 0 || h.tee !== null || h.teeShort === true || h.approach !== null || h.par !== 4 || !!h.teeClub;
   const percent = (numerator, denominator) => denominator ? numerator / denominator * 100 : null;
   const copy = value => JSON.parse(JSON.stringify(value));
 
@@ -43,6 +49,10 @@
       putts: validCount(h.putts, 30) ? h.putts : null,
       obTee: validCount(h.obTee, 9) ? h.obTee : 0,
       obLater: validCount(h.obLater, 9) ? h.obLater : 0,
+      bunker: validCount(h.bunker, 9) ? h.bunker : null,
+      laterOB: Array.from({ length: validCount(h.obLater, 9) ? h.obLater : 0 }, (_, i) => ({
+        direction: Object.hasOwn(OB_DIRECTIONS, h.laterOB?.[i]?.direction) ? h.laterOB[i].direction : null,
+        club: Object.hasOwn(LATER_CLUBS, h.laterOB?.[i]?.club) ? h.laterOB[i].club : null })),
       direct, tee: h.tee === 'good' ? 'straight' : DIRECTION_KEYS.includes(h.tee) ? h.tee : null,
       // Absence in historical records is unknown, rather than an observed non-short.
       teeShort: typeof h.teeShort === 'boolean' ? h.teeShort : null,
@@ -69,13 +79,14 @@
     return { id: options.id || makeId(), date: typeof options.date === 'string' ? options.date : today(),
       place: typeof options.place === 'string' ? options.place.slice(0, 100) : '',
       courseNames: normalizeCourseNames(options.courseNames),
+      courseStarts: normalizeCourseStarts(options.courseNames, options.courseStarts),
       holes: Array.isArray(options.holes) && options.holes.length === 18 ? options.holes.map(normalizeHole) : Array.from({ length: 18 }, blankHole),
       active: validCount(options.active, 17) ? options.active : 0,
       finished: options.finished === true, createdAt: options.createdAt || now, updatedAt: options.updatedAt || now };
   }
 
   function stableLegacyId(raw) {
-    const content = JSON.stringify({ date: raw.date || '', place: raw.place || '', holes: raw.holes.map(h => { const { teeClub, ...legacyHole } = normalizeHole(h); return legacyHole; }) });
+    const content = JSON.stringify({ date: raw.date || '', place: raw.place || '', holes: raw.holes.map(h => { const { teeClub, bunker, laterOB, ...legacyHole } = normalizeHole(h); return legacyHole; }) });
     let hash = 2166136261;
     for (let i = 0; i < content.length; i++) hash = Math.imul(hash ^ content.charCodeAt(i), 16777619);
     return `legacy-${(hash >>> 0).toString(16).padStart(8, '0')}`;
@@ -131,6 +142,14 @@
     assert([3, 4, 5].includes(h.par), `${context}のPARが不正です。`);
     for (const key of ['long', 'short', 'putts']) assert(h[key] === null || validCount(h[key], 30), `${context}の打数が不正です。`);
     for (const key of ['obTee', 'obLater']) assert(validCount(h[key], 9), `${context}のOB回数が不正です。`);
+    assert(h.bunker === undefined || h.bunker === null || validCount(h.bunker, 9), `${context}のバンカー回数が不正です。`);
+    if (h.laterOB !== undefined) {
+      assert(Array.isArray(h.laterOB) && h.laterOB.length === h.obLater, `${context}のOB回数と詳細が一致しません。`);
+      h.laterOB.forEach(ob => {
+        assert(isObject(ob) && (ob.direction === null || (typeof ob.direction === 'string' && Object.hasOwn(OB_DIRECTIONS, ob.direction))) &&
+          (ob.club === null || (typeof ob.club === 'string' && Object.hasOwn(LATER_CLUBS, ob.club))), `${context}の2打目以降OB詳細が不正です。`);
+      });
+    }
     assert(typeof h.direct === 'boolean', `${context}の直接ON記録が不正です。`);
     if (!legacy) {
       assert(!h.direct || h.short === 0, `${context}の直接ONと50y以内の打数が一致しません。`);
@@ -170,6 +189,7 @@
       assert(typeof round.place === 'string' && round.place.length <= 100, `${context}のゴルフ場名が不正です。`);
       assert(round.courseNames === undefined || (Array.isArray(round.courseNames) && round.courseNames.length === 2 && round.courseNames.every(name => typeof name === 'string' && name.length <= 20 && name.trim().length > 0)), `${context}の前後半のコース名が不正です。`);
       assert(Array.isArray(round.holes) && round.holes.length === 18, `${context}は18ホール必要です。`);
+      assert(round.courseStarts === undefined || (Array.isArray(round.courseStarts) && round.courseStarts.length === 2 && round.courseStarts.every(n => n === 1 || n === 10)), `${context}の開始番号が不正です。`);
       if (!legacy || round.id !== undefined) {
         assert(typeof round.id === 'string' && /^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/.test(round.id), `${context}のIDが不正です。`);
         assert(!ids.has(round.id), '同じラウンドIDが重複しています。'); ids.add(round.id);
@@ -275,5 +295,6 @@
   }
 
   return Object.freeze({ SCHEMA_VERSION, DEFAULT_GOALS, DEFAULT_COURSE_NAMES, normalizeCourseNames, TEE, CLUBS, APPROACH, blankHole, newRound, normalizeHole, normalizeGoals,
+    LATER_CLUBS, OB_DIRECTIONS, automaticStart, normalizeCourseStarts, holeNumber, blankLaterOB,
     migrate, validateImport, mergeDatabases, analyze, teeShotBreakdown, compare, score, onCount, bogeyOn, started, hasRoundData });
 });

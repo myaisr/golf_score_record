@@ -35,6 +35,8 @@ JSON_COLUMN = 52
 JSON_HEADER = '_roundnote_json_v2'
 TEE = {'left': '左', 'straight': 'まっすぐ', 'right': '右'}
 CLUBS = {'driver': 'ドライバー', 'wood_ut': 'ウッド・ユーティリティ', 'iron': 'アイアン', 'wedge': 'ウェッジ'}
+OB_DIRECTIONS = {'left': '左', 'right': '右', 'other': 'その他'}
+LATER_CLUBS = {key: label for key, label in CLUBS.items() if key != 'driver'}
 APPROACH = {'short': 'ショート', 'over': 'オーバー', 'left': '左', 'right': '右', 'fat': 'ダフリ', 'thin': 'トップ'}
 GREEN = '193E2B'
 MID_GREEN = '34794E'
@@ -113,14 +115,25 @@ def normalize_hole(value, legacy=False):
         short = 0
     if short is not None and short > 0:
         direct = False
+    ob_later = number(value.get('obLater', 0), 9, False)
+    later = value.get('laterOB', [{'direction': None, 'club': None} for _ in range(ob_later)])
+    if not isinstance(later, list) or len(later) != ob_later:
+        raise ValueError('OB回数と詳細が一致しません')
+    for ob in later:
+        if not isinstance(ob, dict) or 'direction' not in ob or 'club' not in ob:
+            raise ValueError('2打目以降のOB詳細が不正です')
+        if ob['direction'] is not None and (not isinstance(ob['direction'], str) or ob['direction'] not in OB_DIRECTIONS):
+            raise ValueError('2打目以降のOB方向が不正です')
+        if ob['club'] is not None and (not isinstance(ob['club'], str) or ob['club'] not in LATER_CLUBS):
+            raise ValueError('2打目以降のOBクラブが不正です')
     return {'par': int(par), 'long': number(value.get('long')), 'short': short,
             'putts': number(value.get('putts')), 'obTee': number(value.get('obTee', 0), 9, False),
             'obLater': number(value.get('obLater', 0), 9, False), 'direct': direct,
-            'tee': tee, 'teeShort': value.get('teeShort'), 'approach': approach, 'teeClub': club}
+            'tee': tee, 'teeShort': value.get('teeShort'), 'approach': approach, 'teeClub': club, 'bunker': number(value.get('bunker'), 9), 'laterOB': later}
 
 
 def legacy_id(raw, holes):
-    canonical = json.dumps({'date': raw.get('date') or '', 'place': raw.get('place') or '', 'holes': [{k: v for k, v in h.items() if k != 'teeClub'} for h in holes]}, ensure_ascii=False, separators=(',', ':'))
+    canonical = json.dumps({'date': raw.get('date') or '', 'place': raw.get('place') or '', 'holes': [{k: v for k, v in h.items() if k not in ('teeClub', 'bunker', 'laterOB')} for h in holes]}, ensure_ascii=False, separators=(',', ':'))
     encoded = canonical.encode('utf-16-le', errors='surrogatepass')
     result = 2166136261
     for pos in range(0, len(encoded), 2):
@@ -140,6 +153,10 @@ def normalize_round(raw, legacy=False):
     if not isinstance(course_names, list) or len(course_names) != 2 or any(not isinstance(name, str) or not name.strip() or len(name.encode('utf-16-le', errors='surrogatepass')) // 2 > 20 for name in course_names):
         raise ValueError('前後半のコース名はそれぞれ20文字以内の文字列が必要です')
     course_names = [name.strip() for name in course_names]
+    starts = raw.get('courseStarts', [1, 10])
+    if not isinstance(starts, list) or len(starts) != 2 or any(type(n) is not int or n not in (1, 10) for n in starts):
+        raise ValueError('開始番号は1または10の2要素配列が必要です')
+    starts = [({'IN': 10, 'OUT': 1}.get(name.upper()) or starts[i]) for i, name in enumerate(course_names)]
     active = number(raw.get('active', 0), 17, False)
     identifier = raw.get('id') or (legacy_id(raw, holes) if legacy else None)
     if not isinstance(identifier, str) or re.fullmatch(r'[A-Za-z0-9][A-Za-z0-9._:-]{0,127}', identifier) is None:
@@ -156,7 +173,7 @@ def normalize_round(raw, legacy=False):
         raise ValueError('finishedは真偽値が必要です')
     if legacy:
         finished = finished or all(score(h) is not None for h in holes)
-    return {'id': identifier, 'date': day, 'place': place, 'courseNames': course_names, 'holes': holes, 'active': active,
+    return {'id': identifier, 'date': day, 'place': place, 'courseNames': course_names, 'courseStarts': starts, 'holes': holes, 'active': active,
             'finished': finished, 'createdAt': created, 'updatedAt': updated}
 
 
@@ -295,7 +312,7 @@ class Writer:
         sheet.print_options.horizontalCentered = True
 
 
-DETAIL_HEADERS = ['ラウンドID', '日付', 'ゴルフ場', 'ホール', '前後半', 'PAR', '50yまで', '50yからON', 'パット', 'ティー方向', 'ティーショート', '直接ON', 'ティーOB', '2打目以降OB', '50yミス', '入力完了', 'スコア', 'ONまで', 'ボギーオン以内', '50y対象', '50y2打以上', '直接ON対象', 'ティー結果記録', 'ティー方向記録', 'ティーOB左', 'ティーOB右', 'ティーOBその他', '3パット以上', 'ティーショート対象', 'ティー使用クラブ']
+DETAIL_HEADERS = ['ラウンドID', '日付', 'ゴルフ場', 'ホール', '前後半', 'PAR', '50yまで', '50yからON', 'パット', 'ティー方向', 'ティーショート', '直接ON', 'ティーOB', '2打目以降OB', '50yミス', '入力完了', 'スコア', 'ONまで', 'ボギーオン以内', '50y対象', '50y2打以上', '直接ON対象', 'ティー結果記録', 'ティー方向記録', 'ティーOB左', 'ティーOB右', 'ティーOBその他', '3パット以上', 'ティーショート対象', 'ティー使用クラブ', 'バンカー回数', '2打目以降OB詳細']
 HISTORY_HEADERS = ['ラウンドID', '日付', 'ゴルフ場', '終了', '更新日時', '入力済みH', '終了済み18H', 'スコア', '対PAR', '50yまで', '50yからON', 'パット', 'OB合計', 'ティーOB', '2打目以降OB', 'ティーOB左', 'ティーOB右', 'ティーOBその他', 'ティー方向記録H', 'ティーショートH', 'ティー結果記録H', 'ティーショート率', '50y対象H', '50y2打以上H', '50y2打以上率', 'ボギーオン以内H', 'ボギーオン率', '直接ON回数', '直接ON率', '3パット以上H', '前半スコア', '後半スコア', '作成日時', 'ティーショート対象H', '前半コース名', '後半コース名']
 
 
@@ -304,10 +321,12 @@ def add_detail(writer, record):
     first = sheet.max_row + 1 if sheet.cell(1, 1).value is not None else 2
     for index, h in enumerate(record['holes']):
         row = first + index
-        raw = [record['id'], date.fromisoformat(record['date']) if record['date'] else None, record['place'], index + 1, record.get('courseNames', ['OUT', 'IN'])[0 if index < 9 else 1], h['par'], h['long'], h['short'], h['putts'], TEE.get(h['tee']), None if h['teeShort'] is None else int(h['teeShort']), int(h['direct']), h['obTee'], h['obLater'], None if h['approach'] is None else '・'.join(APPROACH[k] for k in h['approach']) if h['approach'] else 'ミスなし']
+        raw = [record['id'], date.fromisoformat(record['date']) if record['date'] else None, record['place'], record.get('courseStarts', [1, 10])[0 if index < 9 else 1] + index % 9, record.get('courseNames', ['OUT', 'IN'])[0 if index < 9 else 1], h['par'], h['long'], h['short'], h['putts'], TEE.get(h['tee']), None if h['teeShort'] is None else int(h['teeShort']), int(h['direct']), h['obTee'], h['obLater'], None if h['approach'] is None else '・'.join(APPROACH[k] for k in h['approach']) if h['approach'] else 'ミスなし']
         for col, value in enumerate(raw, 1):
             writer.value(sheet, row, col, value)
         writer.value(sheet, row, 30, CLUBS.get(h.get('teeClub')))
+        writer.value(sheet, row, 31, h.get('bunker'))
+        writer.value(sheet, row, 32, ' / '.join(f"{i + 1}回目: {LATER_CLUBS.get(ob['club'], 'クラブ未記録')}/{OB_DIRECTIONS.get(ob['direction'], '方向未記録')}" for i, ob in enumerate(h.get('laterOB', []))) or None)
         complete = score(h) is not None
         on = h['long'] + h['short'] if h['long'] is not None and h['short'] is not None else None
         target = complete and not h['direct'] and h['short'] >= 1
@@ -554,6 +573,7 @@ def write_workbook(rounds, output):
     writer.workbook[HISTORY].column_dimensions['AG'].width = 26
     writer.workbook[DETAIL].column_dimensions['O'].width = 28
     writer.workbook[DETAIL].column_dimensions['AD'].width = 28
+    writer.workbook[DETAIL].column_dimensions['AF'].width = 55
     for col in ('AI', 'AJ'):
         writer.workbook[HISTORY].column_dimensions[col].width = 24
     writer.workbook[DETAIL].column_dimensions['E'].width = 24

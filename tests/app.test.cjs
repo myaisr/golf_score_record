@@ -766,3 +766,40 @@ test('completed-round PNG export preserves scorecard detail and adds target anal
   }
   assert.match(app.overlayMarkup(), /PNG|保存/);
 });
+
+test('bunker and multiple later OBs persist, edit independently, trim with count and round-trip through backup', async () => {
+  const app=openApp();selectScore(app);
+  app.click({field:'bunker',step:'1'});
+  for(let i=0;i<2;i++)app.click({field:'obLater',step:'1'});
+  app.click({laterOb:'0',laterField:'direction',laterValue:'right'});
+  app.click({laterOb:'0',laterField:'club',laterValue:'iron'});
+  app.click({laterOb:'1',laterField:'direction',laterValue:'left'});
+  app.click({laterOb:'1',laterField:'club',laterValue:'wedge'});
+  const h=app.state().holes[0];assert.equal(h.bunker,1);assert.equal(Core.score(h),5);
+  assert.deepEqual(h.laterOB,[{direction:'right',club:'iron'},{direction:'left',club:'wedge'}]);
+  const reload=openApp({storage:app.storage});assert.match(reload.markup(),/2打目以降のOB · 2回目/);
+  reload.click({action:'export-json'});const json=await reload.downloadedJSON();
+  const restored=openApp();await restored.import(json);
+  assert.deepEqual(restored.state().holes[0].laterOB,h.laterOB);
+  reload.click({field:'obLater',step:'-1'});
+  assert.deepEqual(reload.state().holes[0].laterOB,[h.laterOB[0]]);
+  reload.click({field:'obLater',step:'1'});
+  assert.deepEqual(reload.state().holes[0].laterOB[1],{direction:null,club:null});
+});
+
+test('course numbering and multiline review persist and reach PNG and on-screen scorecards', () => {
+  const app=openApp({storage:stored(database(completeRound()))});
+  app.input({dataset:{course:'0'},value:'IN'});app.input({dataset:{course:'1'},value:'OUT'});
+  app.click({hole:'0'});assert.match(app.markup(),/>10H /);
+  app.click({hole:'9'});assert.match(app.markup(),/>1H /);
+  app.click({teeClub:'driver'});app.click({tee:'left'});app.click({approach:'over'});
+  assert.match(app.markup(),/ティーショット: ドライバー\/左\n50y未満: オーバー/);
+  app.input({dataset:{course:'0'},value:'東'});app.input({dataset:{course:'1'},value:'西'});
+  app.click({startHalf:'0',start:'1'});app.click({startHalf:'1',start:'1'});
+  assert.deepEqual(app.state().courseStarts,[1,1]);
+  app.click({action:'finish'});app.click({action:'export'});
+  const canvas=app.canvases[1];assert.ok(canvas.text.includes('バンカー'));
+  const headers=canvas.draws.filter(d=>d.x===257&&(d.y===444||d.y===914));
+  assert.deepEqual(headers.map(d=>d.value),['1','1']);
+  const reload=openApp({storage:app.storage});assert.deepEqual(reload.state().courseStarts,[1,1]);
+});
