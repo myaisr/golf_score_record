@@ -228,8 +228,8 @@
     return { schemaVersion: SCHEMA_VERSION, currentRoundId, goals: { ...(hadData ? existing.goals : imported.goals) }, rounds };
   }
 
-  function penaltyAdjusted(value) {
-    const h = normalizeHole(value), adjusted = { long: h.long, short: h.short, putts: h.putts };
+  function adjustPenaltyStrokes(h) {
+    const adjusted = { long: h.long, short: h.short, putts: h.putts };
     const subtract = (stage, amount) => { const key = stage === 'tee' ? 'long' : stage; if (finite(adjusted[key])) adjusted[key] -= amount; };
     subtract('long', 2 * h.obTee);
     h.laterOB.forEach(ob => subtract(ob.stage || 'long', 2));
@@ -237,8 +237,33 @@
     return adjusted;
   }
 
+  function penaltyAdjusted(value) {
+    return adjustPenaltyStrokes(normalizeHole(value));
+  }
+
+  // This predicate also serves partially entered scorecards. Review eligibility
+  // and inconsistent penalty adjustments are handled separately by reviewHole.
+  function scorecardWarningFor(h, adjusted, field) {
+    switch (field) {
+      case 'long': return finite(adjusted.long) && adjusted.long + (h.direct ? 0 : 1) > h.par - 1;
+      case 'short': return finite(adjusted.short) && adjusted.short >= 2;
+      case 'putts': return finite(h.putts) && h.putts >= 3;
+      case 'ob': return h.obTee + h.obLater > 0;
+      case 'score': return score(h) !== null && score(h) > h.par + 1;
+      default: return false;
+    }
+  }
+
+  function scorecardWarning(h, field) {
+    return scorecardWarningFor(h, penaltyAdjusted(h), field);
+  }
+
+  function scorecardTone(h, field) {
+    return field === 'score' && score(h) !== null && score(h) >= h.par + 3 ? 'triple' : scorecardWarning(h, field) ? 'bad' : '';
+  }
+
   function reviewHole(value) {
-    const h = normalizeHole(value), adjusted = penaltyAdjusted(h), total = score(h);
+    const h = normalizeHole(value), adjusted = adjustPenaltyStrokes(h), total = score(h);
     const tags = [];
     if (h.obTee + h.obLater > 0) tags.push('OB');
     if (h.onePenalties.length) tags.push('ワンペナ');
@@ -248,9 +273,9 @@
       return { status: 'invalid', score: total, tags: [...tags, '入力を確認'], causes: [], hasPenalty, adjusted };
     }
     const causes = [];
-    if (adjusted.long + (h.direct ? 0 : 1) > h.par - 1) causes.push('50yまで');
-    if (!h.direct && adjusted.short >= 2) causes.push('アプローチ2打以上');
-    if (adjusted.putts >= 3) causes.push('3パット以上');
+    if (scorecardWarningFor(h, adjusted, 'long')) causes.push('50yまで');
+    if (!h.direct && scorecardWarningFor(h, adjusted, 'short')) causes.push('アプローチ2打以上');
+    if (scorecardWarningFor(h, adjusted, 'putts')) causes.push('3パット以上');
     return { status: 'ready', score: total, tags: [...tags, ...causes], causes, hasPenalty, adjusted };
   }
 
@@ -341,6 +366,6 @@
 
   return Object.freeze({ SCHEMA_VERSION, DEFAULT_GOALS, DEFAULT_COURSE_NAMES, normalizeCourseNames, TEE, CLUBS, APPROACH, blankHole, newRound, normalizeHole, normalizeGoals,
     LATER_CLUBS, OB_DIRECTIONS, automaticStart, normalizeCourseStarts, holeNumber, blankLaterOB,
-    PENALTY_STAGES, penaltyAdjusted, reviewHole, reviewRound,
+    PENALTY_STAGES, penaltyAdjusted, scorecardWarning, scorecardTone, reviewHole, reviewRound,
     migrate, validateImport, mergeDatabases, analyze, teeShotBreakdown, compare, score, onCount, bogeyOn, started, hasRoundData });
 });

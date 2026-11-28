@@ -43,6 +43,7 @@ GREEN = '193E2B'
 MID_GREEN = '34794E'
 MUTED = '65796D'
 DEFAULT_GOALS = {'score': 99, 'ob': 2, 'approachRate': 30, 'putts': 36, 'bogeyOnHoles': 12}
+SHOT_CAUSE_LABELS = {'long': '50yまで', 'short': 'アプローチ2打以上', 'putts': '3パット以上'}
 
 
 def number(value, maximum=30, nullable=True):
@@ -219,28 +220,47 @@ def score(hole):
     return sum(values) if all(v is not None for v in values) else None
 
 
+def penalty_adjusted(h):
+    """Return shot counts with each interval's recorded penalties removed."""
+    adjusted = {field: h[field] for field in SHOT_CAUSE_LABELS}
+    events = [('long', 2 * h['obTee'])]
+    events.extend((ob.get('stage', 'long'), 2) for ob in h.get('laterOB', []))
+    events.extend((penalty['stage'], 1) for penalty in h.get('onePenalties', []))
+    for stage, count in events:
+        field = 'long' if stage == 'tee' else stage
+        if adjusted[field] is not None:
+            adjusted[field] -= count
+    return adjusted
+
+
+def shot_warnings(h, adjusted=None):
+    """Keep interval thresholds independent from completion/validity decisions."""
+    if adjusted is None:
+        adjusted = penalty_adjusted(h)
+    return {
+        'long': adjusted['long'] is not None and adjusted['long'] + (0 if h['direct'] else 1) > h['par'] - 1,
+        'short': adjusted['short'] is not None and adjusted['short'] >= 2,
+        'putts': adjusted['putts'] is not None and adjusted['putts'] >= 3,
+    }
+
+
+def invalid_adjustment(h, adjusted):
+    return (any(n < 0 for n in adjusted.values())
+            or (not h['direct'] and adjusted['short'] < 1)
+            or (h['direct'] and adjusted['short'] != 0))
+
+
 def review_hole(h):
-    adjusted = {'long': h['long'], 'short': h['short'], 'putts': h['putts']}
-    def subtract(stage, count):
-        key = 'long' if stage == 'tee' else stage
-        if adjusted[key] is not None:
-            adjusted[key] -= count
-    subtract('long', 2 * h['obTee'])
-    for ob in h.get('laterOB', []):
-        subtract(ob.get('stage', 'long'), 2)
-    for penalty in h.get('onePenalties', []):
-        subtract(penalty['stage'], 1)
+    adjusted = penalty_adjusted(h)
     tags = (['OB'] if h['obTee'] + h['obLater'] else []) + (['ワンペナ'] if h.get('onePenalties') else [])
     if score(h) is None:
         return None
-    if any(n < 0 for n in adjusted.values()) or (not h['direct'] and adjusted['short'] < 1) or (h['direct'] and adjusted['short'] != 0):
+    if invalid_adjustment(h, adjusted):
         return tags + ['入力を確認']
-    if adjusted['long'] + (0 if h['direct'] else 1) > h['par'] - 1:
-        tags.append('50yまで')
-    if not h['direct'] and adjusted['short'] >= 2:
-        tags.append('アプローチ2打以上')
-    if adjusted['putts'] >= 3:
-        tags.append('3パット以上')
+    warnings = shot_warnings(h, adjusted)
+    # Direct ON retains its own validity rule and has no approach interval.
+    tags.extend(label for field, label in SHOT_CAUSE_LABELS.items()
+                if warnings[field] and (field != 'short' or not h['direct']))
     return tags
 
 

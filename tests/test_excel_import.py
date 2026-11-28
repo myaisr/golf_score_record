@@ -25,6 +25,31 @@ def make_round(identifier='round-one', day='2026-11-01'):
 
 
 class ImportTests(unittest.TestCase):
+    @unittest.skipUnless(shutil.which('node'), 'Node.js is needed for cross-language parity')
+    def test_shared_penalty_fixtures_match_excel_and_browser(self):
+        cases = json.loads((ROOT / 'tests' / 'fixtures' / 'penalty-cases.json').read_text(encoding='utf-8'))['cases']
+        script = """const fs = require('fs'), core = require('./roundnote-core.js');
+const cases = JSON.parse(fs.readFileSync(0, 'utf8'));
+process.stdout.write(JSON.stringify(cases.map(({hole}) => {
+  const review = core.reviewHole(hole);
+  return {tags: review.status === 'incomplete' ? null : review.tags,
+    adjusted: core.penaltyAdjusted(hole),
+    warnings: Object.fromEntries(['long', 'short', 'putts'].map(field => [field, core.scorecardWarning(hole, field)]))};
+})));"""
+        browser = json.loads(subprocess.check_output(['node', '-e', script], input=json.dumps(cases).encode(), cwd=ROOT))
+        for case, actual in zip(cases, browser):
+            with self.subTest(case=case['name']):
+                hole = excel.normalize_hole(case['hole'])
+                original = copy.deepcopy(hole)
+                expected = case['expected']
+                tags = None if expected['status'] == 'incomplete' else expected['tags']
+                warnings = {field: expected['warnings'][field] for field in ('long', 'short', 'putts')}
+                self.assertEqual(excel.penalty_adjusted(hole), expected['adjusted'])
+                self.assertEqual(excel.shot_warnings(hole), warnings)
+                self.assertEqual(excel.review_hole(hole), tags)
+                self.assertEqual({'tags': tags, 'adjusted': expected['adjusted'], 'warnings': warnings}, actual)
+                self.assertEqual(hole, original)
+
     def test_penalty_events_and_review_survive_excel_and_match_browser(self):
         record = make_round()
         h = record['holes'][0]

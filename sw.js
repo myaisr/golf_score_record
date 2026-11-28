@@ -1,5 +1,5 @@
-const CACHE = 'roundnote-v11-penalty-review';
-const ASSETS = ['./', './index.html', './app.css', './roundnote-core.js', './app.js', './manifest.webmanifest', './icon-192.png', './icon-512.png'];
+const CACHE = 'roundnote-v12-refactor';
+const ASSETS = ['./', './index.html', './app.css', './roundnote-core.js', './roundnote-views.js', './app.js', './manifest.webmanifest', './icon-192.png', './icon-512.png'];
 self.addEventListener('install', event => {
   event.waitUntil(caches.open(CACHE).then(cache => cache.addAll(ASSETS)).then(() => self.skipWaiting()));
 });
