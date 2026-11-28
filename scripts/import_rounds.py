@@ -36,6 +36,7 @@ JSON_HEADER = '_roundnote_json_v2'
 TEE = {'left': '左', 'straight': 'まっすぐ', 'right': '右'}
 CLUBS = {'driver': 'ドライバー', 'wood_ut': 'ウッド・ユーティリティ', 'iron': 'アイアン', 'wedge': 'ウェッジ'}
 OB_DIRECTIONS = {'left': '左', 'right': '右', 'other': 'その他'}
+PENALTY_STAGES = {'tee': 'ティーショット', 'long': '50yまで', 'short': 'アプローチ'}
 LATER_CLUBS = {key: label for key, label in CLUBS.items() if key != 'driver'}
 APPROACH = {'short': 'ショート', 'over': 'オーバー', 'left': '左', 'right': '右', 'fat': 'ダフリ', 'thin': 'トップ'}
 GREEN = '193E2B'
@@ -126,14 +127,22 @@ def normalize_hole(value, legacy=False):
             raise ValueError('2打目以降のOB方向が不正です')
         if ob['club'] is not None and (not isinstance(ob['club'], str) or ob['club'] not in LATER_CLUBS):
             raise ValueError('2打目以降のOBクラブが不正です')
+        if 'stage' in ob and (not isinstance(ob['stage'], str) or ob['stage'] not in ('long', 'short')):
+            raise ValueError('OBの発生したショットが不正です')
+    one_penalties = value.get('onePenalties', [])
+    if not isinstance(one_penalties, list) or len(one_penalties) > 9:
+        raise ValueError('ワンペナ回数が不正です')
+    for penalty in one_penalties:
+        if not isinstance(penalty, dict) or not isinstance(penalty.get('stage'), str) or penalty['stage'] not in PENALTY_STAGES:
+            raise ValueError('ワンペナの発生したショットが不正です')
     return {'par': int(par), 'long': number(value.get('long')), 'short': short,
             'putts': number(value.get('putts')), 'obTee': number(value.get('obTee', 0), 9, False),
             'obLater': number(value.get('obLater', 0), 9, False), 'direct': direct,
-            'tee': tee, 'teeShort': value.get('teeShort'), 'approach': approach, 'teeClub': club, 'bunker': number(value.get('bunker'), 9), 'laterOB': later}
+            'tee': tee, 'teeShort': value.get('teeShort'), 'approach': approach, 'teeClub': club, 'bunker': number(value.get('bunker'), 9), 'laterOB': later, 'onePenalties': [{'stage': p['stage']} for p in one_penalties]}
 
 
 def legacy_id(raw, holes):
-    canonical = json.dumps({'date': raw.get('date') or '', 'place': raw.get('place') or '', 'holes': [{k: v for k, v in h.items() if k not in ('teeClub', 'bunker', 'laterOB')} for h in holes]}, ensure_ascii=False, separators=(',', ':'))
+    canonical = json.dumps({'date': raw.get('date') or '', 'place': raw.get('place') or '', 'holes': [{k: v for k, v in h.items() if k not in ('teeClub', 'bunker', 'laterOB', 'onePenalties')} for h in holes]}, ensure_ascii=False, separators=(',', ':'))
     encoded = canonical.encode('utf-16-le', errors='surrogatepass')
     result = 2166136261
     for pos in range(0, len(encoded), 2):
@@ -208,6 +217,31 @@ def read_json(data):
 def score(hole):
     values = [hole.get(k) for k in ('long', 'short', 'putts')]
     return sum(values) if all(v is not None for v in values) else None
+
+
+def review_hole(h):
+    adjusted = {'long': h['long'], 'short': h['short'], 'putts': h['putts']}
+    def subtract(stage, count):
+        key = 'long' if stage == 'tee' else stage
+        if adjusted[key] is not None:
+            adjusted[key] -= count
+    subtract('long', 2 * h['obTee'])
+    for ob in h.get('laterOB', []):
+        subtract(ob.get('stage', 'long'), 2)
+    for penalty in h.get('onePenalties', []):
+        subtract(penalty['stage'], 1)
+    tags = (['OB'] if h['obTee'] + h['obLater'] else []) + (['ワンペナ'] if h.get('onePenalties') else [])
+    if score(h) is None:
+        return None
+    if any(n < 0 for n in adjusted.values()) or (not h['direct'] and adjusted['short'] < 1) or (h['direct'] and adjusted['short'] != 0):
+        return tags + ['入力を確認']
+    if adjusted['long'] + (0 if h['direct'] else 1) > h['par'] - 1:
+        tags.append('50yまで')
+    if not h['direct'] and adjusted['short'] >= 2:
+        tags.append('アプローチ2打以上')
+    if adjusted['putts'] >= 3:
+        tags.append('3パット以上')
+    return tags
 
 
 def rate(numerator, denominator):
@@ -312,7 +346,7 @@ class Writer:
         sheet.print_options.horizontalCentered = True
 
 
-DETAIL_HEADERS = ['ラウンドID', '日付', 'ゴルフ場', 'ホール', '前後半', 'PAR', '50yまで', '50yからON', 'パット', 'ティー方向', 'ティーショート', '直接ON', 'ティーOB', '2打目以降OB', '50yミス', '入力完了', 'スコア', 'ONまで', 'ボギーオン以内', '50y対象', '50y2打以上', '直接ON対象', 'ティー結果記録', 'ティー方向記録', 'ティーOB左', 'ティーOB右', 'ティーOBその他', '3パット以上', 'ティーショート対象', 'ティー使用クラブ', 'バンカー回数', '2打目以降OB詳細']
+DETAIL_HEADERS = ['ラウンドID', '日付', 'ゴルフ場', 'ホール', '前後半', 'PAR', '50yまで', '50yからON', 'パット', 'ティー方向', 'ティーショート', '直接ON', 'ティーOB', '2打目以降OB', '50yミス', '入力完了', 'スコア', 'ONまで', 'ボギーオン以内', '50y対象', '50y2打以上', '直接ON対象', 'ティー結果記録', 'ティー方向記録', 'ティーOB左', 'ティーOB右', 'ティーOBその他', '3パット以上', 'ティーショート対象', 'ティー使用クラブ', 'バンカー回数', '2打目以降OB詳細', 'ワンペナ回数', 'ワンペナ詳細', '判定']
 HISTORY_HEADERS = ['ラウンドID', '日付', 'ゴルフ場', '終了', '更新日時', '入力済みH', '終了済み18H', 'スコア', '対PAR', '50yまで', '50yからON', 'パット', 'OB合計', 'ティーOB', '2打目以降OB', 'ティーOB左', 'ティーOB右', 'ティーOBその他', 'ティー方向記録H', 'ティーショートH', 'ティー結果記録H', 'ティーショート率', '50y対象H', '50y2打以上H', '50y2打以上率', 'ボギーオン以内H', 'ボギーオン率', '直接ON回数', '直接ON率', '3パット以上H', '前半スコア', '後半スコア', '作成日時', 'ティーショート対象H', '前半コース名', '後半コース名']
 
 
@@ -326,7 +360,11 @@ def add_detail(writer, record):
             writer.value(sheet, row, col, value)
         writer.value(sheet, row, 30, CLUBS.get(h.get('teeClub')))
         writer.value(sheet, row, 31, h.get('bunker'))
-        writer.value(sheet, row, 32, ' / '.join(f"{i + 1}回目: {LATER_CLUBS.get(ob['club'], 'クラブ未記録')}/{OB_DIRECTIONS.get(ob['direction'], '方向未記録')}" for i, ob in enumerate(h.get('laterOB', []))) or None)
+        writer.value(sheet, row, 32, ' / '.join(f"{i + 1}回目: {LATER_CLUBS.get(ob['club'], 'クラブ未記録')}/{OB_DIRECTIONS.get(ob['direction'], '方向未記録')}/{PENALTY_STAGES[ob.get('stage', 'long')]}" for i, ob in enumerate(h.get('laterOB', []))) or None)
+        writer.value(sheet, row, 33, len(h.get('onePenalties', [])))
+        writer.value(sheet, row, 34, ' / '.join(f"{i + 1}回目: {PENALTY_STAGES[p['stage']]}" for i, p in enumerate(h.get('onePenalties', []))) or None)
+        tags = review_hole(h)
+        writer.value(sheet, row, 35, '・'.join(tags) if tags else None)
         complete = score(h) is not None
         on = h['long'] + h['short'] if h['long'] is not None and h['short'] is not None else None
         target = complete and not h['direct'] and h['short'] >= 1
@@ -574,6 +612,8 @@ def write_workbook(rounds, output):
     writer.workbook[DETAIL].column_dimensions['O'].width = 28
     writer.workbook[DETAIL].column_dimensions['AD'].width = 28
     writer.workbook[DETAIL].column_dimensions['AF'].width = 55
+    writer.workbook[DETAIL].column_dimensions['AH'].width = 40
+    writer.workbook[DETAIL].column_dimensions['AI'].width = 40
     for col in ('AI', 'AJ'):
         writer.workbook[HISTORY].column_dimensions[col].width = 24
     writer.workbook[DETAIL].column_dimensions['E'].width = 24

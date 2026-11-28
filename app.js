@@ -33,11 +33,11 @@
     return ({ '-3': 'アルバトロス', '-2': 'イーグル', '-1': 'バーディ', 0: 'パー', 1: 'ボギー', 2: 'ダブルボギー', 3: 'トリプルボギー' })[relative] || sgn(relative);
   };
   function scorecardWarning(h, field) {
+    const adjusted = Core.penaltyAdjusted(h);
     switch (field) {
-      // Judge the long game with one approach stroke (none for direct ON),
-      // removing the lost stroke and penalty for each recorded OB.
-      case 'long': return finite(h.long) && h.long - 2 * (h.obTee + h.obLater) + (h.direct ? 0 : 1) > h.par - 1;
-      case 'short': return finite(h.short) && h.short >= 2;
+      // Judge each interval after its recorded OB and one-penalty adjustments.
+      case 'long': return finite(adjusted.long) && adjusted.long + (h.direct ? 0 : 1) > h.par - 1;
+      case 'short': return finite(adjusted.short) && adjusted.short >= 2;
       case 'putts': return finite(h.putts) && h.putts >= 3;
       case 'ob': return h.obTee + h.obLater > 0;
       case 'score': return score(h) !== null && score(h) > h.par + 1;
@@ -50,7 +50,7 @@
   let saveStatus = '';
   let storageBlocked = false;
   let unreadableRaw = null;
-  const ui = { review: false, holes: false, obHelp: false, goals: false, goalDraft: null, scope: 'all', message: '', teeRoundId: null, teeClubs: Object.keys(CLUBS) };
+  const ui = { review: false, holes: false, obHelp: false, goals: false, goalDraft: null, scope: 'all', message: '', teeRoundId: null, teeClubs: Object.keys(CLUBS), reviewRoundId: null, reviewFilter: 'double' };
   try {
     const currentRaw = localStorage.getItem(KEY);
     const raw = currentRaw || localStorage.getItem(LEGACY_KEY);
@@ -115,7 +115,7 @@
         ${counter('long', '50y以内まで', h.long, [1, 2, 3, 4, 5])}
         ${counter('short', '50y以内 → ON', h.short, [0, 1, 2, 3, 4], h)}
         ${counter('putts', 'パット', h.putts, [0, 1, 2, 3, 4])}
-        <section class="ob-section" aria-label="OB回数"><div class="section-line"><h2>OB</h2><button class="info-button" data-action="ob-help" aria-label="OB入力の説明" aria-expanded="${ui.obHelp}" aria-controls="ob-help">ⓘ</button></div><p class="ob-help" id="ob-help" ${ui.obHelp ? '' : 'hidden'}>罰打は上の打数に含めます。ここでは回数だけを記録します。 <a href="https://www.randa.org/rog/the-rules-of-golf/rule-18" target="_blank" rel="noopener noreferrer">規則18</a></p>${obRow('obTee', 'ティーショット', h.obTee)}${obRow('obLater', '2打目以降', h.obLater)}${laterOBView(h)}<div class="bunker-counter">${obRow('bunker', 'バンカー回数', h.bunker)}</div><p class="numbering-help">バンカー・OBの回数はスコアに再加算しません。</p></section>
+        <section class="ob-section" aria-label="OB回数"><div class="section-line"><h2>OB</h2><button class="info-button" data-action="ob-help" aria-label="OB入力の説明" aria-expanded="${ui.obHelp}" aria-controls="ob-help">ⓘ</button></div><p class="ob-help" id="ob-help" ${ui.obHelp ? '' : 'hidden'}>罰打は上の打数に含めます。ここでは回数だけを記録します。 <a href="https://www.randa.org/rog/the-rules-of-golf/rule-18" target="_blank" rel="noopener noreferrer">規則18</a></p>${obRow('obTee', 'ティーショット', h.obTee)}${obRow('obLater', '2打目以降', h.obLater)}${laterOBView(h)}${onePenaltyView(h)}<div class="bunker-counter">${obRow('bunker', 'バンカー回数', h.bunker)}</div><p class="numbering-help">バンカー・OBの回数はスコアに再加算しません。</p></section>
         ${shotReview(h)}
       </section><div class="input-actions"><button class="primary" data-action="next">${state.active === 17 ? 'ラウンド終了' : '次のホール →'}</button></div>`;
   }
@@ -126,7 +126,13 @@
     return `<div class="ob-row"><span>${label}</span><div class="ob-stepper"><button data-field="${field}" data-step="-1" aria-label="${label}${field === 'bunker' ? 'を' : 'のOBを'}減らす" ${!finite(value) || value === 0 ? 'disabled' : ''}>−</button><b aria-live="polite">${fmt(value)}</b><button data-field="${field}" data-step="1" aria-label="${label}${field === 'bunker' ? 'を' : 'のOBを'}増やす" ${value === 9 ? 'disabled' : ''}>＋</button></div></div>`;
   }
   function laterOBView(h) {
-    return h.laterOB.map((ob, i) => `<section class="later-ob-detail" aria-label="2打目以降のOB ${i + 1}回目"><h3>2打目以降のOB · ${i + 1}回目 <span class="badge">任意</span></h3>${[['direction', '方向', Core.OB_DIRECTIONS], ['club', '使用クラブ', Core.LATER_CLUBS]].map(([field, label, choices]) => `<div class="later-ob-field"><span>${label}</span><div class="later-ob-choices" role="group" aria-label="OB ${i + 1}回目の${label}">${Object.entries(choices).map(([key, name]) => `<button class="shot-choice ${ob[field] === key ? 'active' : ''}" data-later-ob="${i}" data-later-field="${field}" data-later-value="${key}" aria-pressed="${ob[field] === key}">${name}</button>`).join('')}</div></div>`).join('')}</section>`).join('');
+    return h.laterOB.map((ob, i) => `<section class="later-ob-detail" aria-label="2打目以降のOB ${i + 1}回目"><h3>2打目以降のOB · ${i + 1}回目 <span class="badge">任意</span></h3><label class="penalty-stage">発生したショット<select data-ob-stage="${i}" aria-label="OB ${i + 1}回目の発生したショット">${stageOptions(ob.stage || 'long', false)}</select></label>${[['direction', '方向', Core.OB_DIRECTIONS], ['club', '使用クラブ', Core.LATER_CLUBS]].map(([field, label, choices]) => `<div class="later-ob-field"><span>${label}</span><div class="later-ob-choices" role="group" aria-label="OB ${i + 1}回目の${label}">${Object.entries(choices).map(([key, name]) => `<button class="shot-choice ${ob[field] === key ? 'active' : ''}" data-later-ob="${i}" data-later-field="${field}" data-later-value="${key}" aria-pressed="${ob[field] === key}">${name}</button>`).join('')}</div></div>`).join('')}</section>`).join('');
+  }
+  function stageOptions(stage, includeTee = true) {
+    return Object.entries(Core.PENALTY_STAGES).filter(([key]) => includeTee || key !== 'tee').map(([key, label]) => `<option value="${key}" ${stage === key ? 'selected' : ''}>${label}</option>`).join('');
+  }
+  function onePenaltyView(h) {
+    return `<section class="one-penalties" aria-label="ワンペナ"><h3>ワンペナ</h3>${h.onePenalties.map((p, i) => `<div class="one-penalty-item"><div class="one-penalty-heading"><h4>ワンペナ · ${i + 1}回目</h4><button class="text-button" data-remove-penalty="${i}" aria-label="ワンペナ ${i + 1}回目を削除">削除</button></div><label class="penalty-stage">発生したショット<select data-one-penalty="${i}" aria-label="ワンペナ ${i + 1}回目の発生したショット">${stageOptions(p.stage)}</select></label></div>`).join('')}<button class="add-penalty" data-action="add-penalty" ${h.onePenalties.length >= 9 ? 'disabled' : ''}>＋ ワンペナを追加</button></section>`;
   }
   function reviewSummary(h) {
     const lines = [], tee = [], direction = [];
@@ -157,12 +163,19 @@
     return `<section class="result-hero"><div class="result-meta"><h1>${esc(state.date)}</h1><span>${t.done}/18H</span></div><div class="result-score"><div class="big">${t.done ? t.score : '—'}<span class="unit">打</span></div><div class="result-relative"><strong>${t.done ? sgn(t.score - t.par) : '—'}</strong><span>PAR ${t.done ? t.par : '—'}</span></div></div>${state.place ? `<p class="result-place">${esc(state.place)}</p>` : ''}</section>
       <div class="result-halves"><span><span class="course-label">${esc(courseName(0))}</span> <b>${out.done ? out.score : '—'}</b><small>${out.done}/9H</small></span><span><span class="course-label">${esc(courseName(1))}</span> <b>${inside.done ? inside.score : '—'}</b><small>${inside.done}/9H</small></span></div>
       <div class="goal-gap"><span>目標 ${database.goals.score}打以下</span><strong class="${tone(scoreDiff)}">${scoreDiff.eligible ? `${signed(scoreDiff.diff)}打` : '入力不足'}</strong></div>
-      ${comparisonView()}${ui.goals ? goalsView() : ''}
+      ${penaltyReviewView()}${comparisonView()}${ui.goals ? goalsView() : ''}
       <section class="surface"><div class="section-heading compact"><h2>OBの内訳</h2></div><div class="ob-summary"><span>ティーショット <b>${t.teeOB}回</b></span><span>2打目以降 <b>${t.lateOB}回</b></span></div><dl class="ob-directions">${[['left', '左'], ['right', '右'], ['other', 'その他']].map(([key, label]) => `<div><dt>${label}</dt><dd>${t.teeOBDirection[key]}回</dd></div>`).join('')}</dl><details class="help"><summary>方向内訳について</summary><p>ティーショットOBを、そのホールで記録した方向に分類します。方向未記録・まっすぐ・ショート単独は「その他」です。同一ホールで複数回OBした場合も、記録方向による分類です。</p></details></section>
       <section class="surface approach-analysis"><h2>50y以内からの2打以上率</h2><strong>${rate(t.approachRate)}</strong><p>ミス${t.approachMisses}回 / 対象${t.approachAttempts}回</p><div class="reference-metrics"><span>50y以上から直接ON <b>${t.directCount}回 / ${rate(t.directRate)}</b></span><span>3パット以上 <b>${t.threePutts}H</b></span></div></section>
       ${trendView()}
       <div class="section-heading"><h2>スコアカード</h2></div>${halfMatrix(0)}${halfMatrix(9)}
       <div class="result-actions"><button class="primary" data-action="export">画像を保存</button><button class="secondary" data-action="resume">記録を再開</button></div>${backupView()}`;
+  }
+  function penaltyReviewView() {
+    if (ui.reviewRoundId !== state.id) { ui.reviewRoundId = state.id; ui.reviewFilter = 'double'; }
+    const review = Core.reviewRound(state, ui.reviewFilter);
+    const metrics = [['罰打のみ', review.penaltyOnly], ['罰打＋ミス', review.both], ['ミスのみ', review.mistakeOnly],
+      ...(review.noIssue ? [['該当なし', review.noIssue]] : []), ...(review.invalid ? [['要確認', review.invalid]] : [])];
+    return `<section class="penalty-review"><div class="penalty-review-hero"><div class="penalty-review-heading"><h2>大叩きの振り返り</h2><span>対象 ${review.rows.length}H</span></div><div class="penalty-review-tabs" role="group" aria-label="振り返り対象">${[['all', '全ホール'], ['double', 'ダボ以上'], ['triple', 'トリプル以上']].map(([key, label]) => `<button data-review-filter="${key}" class="${ui.reviewFilter === key ? 'active' : ''}" aria-pressed="${ui.reviewFilter === key}">${label}</button>`).join('')}</div><div class="penalty-review-metrics">${metrics.map(([label, n]) => `<div><span>${label}</span><strong>${n}<small>H</small></strong></div>`).join('')}</div></div><div class="surface penalty-review-list"><h3>ホールごとの振り返り</h3><div class="penalty-review-columns"><span>ホール</span><span>スコア</span><span>判定</span></div>${review.rows.length ? review.rows.map(row => `<article class="penalty-review-row" data-review-hole="${row.index}"><div><button data-hole="${row.index}" aria-label="${esc(courseName(row.half))} ${row.number}Hを編集">${row.number}H</button><small>${row.half === 0 ? '前半' : '後半'} ${esc(courseName(row.half))} / PAR ${row.par}</small></div><div class="review-score ${row.score >= row.par + 3 ? 'triple' : row.score === row.par + 2 ? 'double' : ''}"><strong>${row.score}</strong><small>${row.score >= row.par + 3 ? 'トリプル以上' : row.score === row.par + 2 ? 'ダボ' : scoreName(state.holes[row.index])}</small></div><div class="review-tags">${row.tags.length ? row.tags.map(tag => `<span class="review-tag ${tag === 'OB' || tag === 'ワンペナ' ? 'penalty' : 'mistake'}">${tag}</span>`).join('') : '<span class="review-no-tags">—</span>'}</div></article>`).join('') : '<p class="review-empty">対象のホールはありません。</p>'}</div></section>`;
   }
   const tone = row => row.good === null ? 'neutral' : row.good ? 'good' : 'bad';
   function comparisonView() {
@@ -291,6 +304,13 @@
   elem.addEventListener('change', async e => {
     if (e.target.id === 'import-file') await importJSON(e.target.files?.[0]);
     if (['0', '1'].includes(e.target.dataset?.course)) render();
+    const h = state.holes[state.active], d = e.target.dataset || {}, stage = e.target.value;
+    if (d.onePenalty !== undefined && Object.hasOwn(Core.PENALTY_STAGES, stage) && h.onePenalties[Number(d.onePenalty)]) {
+      h.onePenalties[Number(d.onePenalty)].stage = stage; save();
+    }
+    if (d.obStage !== undefined && ['long', 'short'].includes(stage) && h.laterOB[Number(d.obStage)]) {
+      h.laterOB[Number(d.obStage)].stage = stage; save();
+    }
   });
   function changeVal(field, value) {
     const h = state.holes[state.active];
@@ -325,6 +345,9 @@
   elem.addEventListener('click', e => {
     const button = e.target.closest('button'); if (!button || button.disabled) return;
     const d = button.dataset, h = state.holes[state.active];
+    if (d.action === 'add-penalty' && h.onePenalties.length < 9) { h.onePenalties.push({ stage: 'long' }); save(); render(); return; }
+    if (d.removePenalty !== undefined && Number.isInteger(Number(d.removePenalty)) && h.onePenalties[Number(d.removePenalty)]) { h.onePenalties.splice(Number(d.removePenalty), 1); save(); render(); return; }
+    if (state.finished && ['all', 'double', 'triple'].includes(d.reviewFilter)) { ui.reviewFilter = d.reviewFilter; ui.reviewRoundId = state.id; render(); return; }
     if (['0', '1'].includes(d.startHalf) && [1, 10].includes(Number(d.start)) && !Core.automaticStart(courseName(Number(d.startHalf)))) {
       state.courseStarts[Number(d.startHalf)] = Number(d.start); save(); render(); return;
     }
@@ -482,7 +505,7 @@
     if (state.place) text(state.place, 72, 140, 29, '#fff', 600, 'left', 1020);
     text(t.done ? t.score : '—', 72, 250, 96, '#fff', 800, 'left', 230); text('打', 325, 248, 24, '#c9dfc8');
     text(t.done ? sgn(t.score - t.par) : '—', 1125, 210, 34, '#fff', 750, 'right');
-    text(`${t.done}/18H  ·  PAR ${t.done ? t.par : '—'}`, 1125, 258, 22, '#c9dfc8', 500, 'right');
+    text(`${t.done}/18H  ·  PAR ${t.done ? t.par : '—'}${state.holes.some(h => h.onePenalties.length) ? `  ·  ワンペナ ${state.holes.reduce((n, h) => n + h.onePenalties.length, 0)}回` : ''}`, 1125, 258, 22, '#c9dfc8', 500, 'right');
     const out = sums(state.holes.slice(0, 9)), inside = sums(state.holes.slice(9));
     text(`${courseName(0)} ${out.done ? out.score : '—'} (${out.done}/9H)`, 66, 328, 25, ink, 700, 'left', 500);
     text(`${courseName(1)} ${inside.done ? inside.score : '—'} (${inside.done}/9H)`, 1134, 328, 25, ink, 700, 'right', 500);
