@@ -803,3 +803,42 @@ test('course numbering and multiline review persist and reach PNG and on-screen 
   assert.deepEqual(headers.map(d=>d.value),['1','1']);
   const reload=openApp({storage:app.storage});assert.deepEqual(reload.state().courseStarts,[1,1]);
 });
+
+test('one-penalty input preserves bunker and original score/PAR controls and survives reload/JSON', async () => {
+  const app=openApp();selectScore(app);
+  app.click({field:'bunker',step:'1'});app.click({action:'add-penalty'});app.click({action:'add-penalty'});
+  await app.change({dataset:{onePenalty:'0'},value:'tee'});await app.change({dataset:{onePenalty:'1'},value:'short'});
+  assert.deepEqual(app.state().holes[0].onePenalties,[{stage:'tee'},{stage:'short'}]);
+  assert.match(app.markup(),/バンカー回数/);assert.match(app.markup(),/data-par="3"/);assert.match(app.markup(),/data-setval="5"/);
+  assert.doesNotMatch(app.markup(),/ワンペナの記録はありません|罰打を含めた区間|1回＝|1パットでカバー/);
+  const reload=openApp({storage:app.storage});assert.deepEqual(reload.state().holes[0].onePenalties,app.state().holes[0].onePenalties);
+  reload.click({action:'export-json'});const backup=await reload.downloadedJSON();
+  const restored=openApp();await restored.import(backup);assert.equal(restored.state().holes[0].bunker,1);
+  assert.deepEqual(restored.state().holes[0].onePenalties,app.state().holes[0].onePenalties);
+  reload.click({removePenalty:'0'});assert.deepEqual(reload.state().holes[0].onePenalties,[{stage:'short'}]);
+  for(let i=0;i<12;i++)reload.click({action:'add-penalty'});assert.equal(reload.state().holes[0].onePenalties.length,9);
+});
+
+test('later OB stage edits preserve direction/club and trim only removed event data', async () => {
+  const app=openApp();selectScore(app);
+  for(let i=0;i<2;i++)app.click({field:'obLater',step:'1'});
+  app.click({laterOb:'1',laterField:'direction',laterValue:'right'});app.click({laterOb:'1',laterField:'club',laterValue:'wedge'});
+  await app.change({dataset:{obStage:'1'},value:'short'});
+  const ob=app.state().holes[0].laterOB[1];assert.deepEqual(ob,{direction:'right',club:'wedge',stage:'short'});
+  await app.change({dataset:{obStage:'1'},value:'tee'});assert.deepEqual(app.state().holes[0].laterOB[1],ob);
+  const reload=openApp({storage:app.storage});assert.deepEqual(reload.state().holes[0].laterOB[1],ob);
+  reload.click({field:'obLater',step:'-1'});reload.click({field:'obLater',step:'1'});
+  assert.deepEqual(reload.state().holes[0].laterOB[1],{direction:null,club:null});
+});
+
+test('result review uses only cause tags, filters without changing records, and hides until round completion', () => {
+  const r=completeRound({holes:[hole({long:4,obTee:1}),hole({long:5,putts:1,obTee:1}),hole({short:2,putts:1}),hole({putts:3}),hole({long:3,onePenalties:[{stage:'long'}]}),hole({short:3,onePenalties:[{stage:'short'}]}),...Array.from({length:12},()=>Core.blankHole())]});
+  const app=openApp({storage:stored(database(r))});app.click({view:'result'});assert.doesNotMatch(app.markup(),/大叩きの振り返り/);
+  app.click({action:'finish'});assert.match(app.markup(),/大叩きの振り返り/);assert.match(app.markup(),/対象 5H/);
+  assert.match(app.markup(),/<span>ホール<\/span><span>スコア<\/span><span>判定<\/span>/);
+  assert.match(app.markup(),/review-tag penalty">OB/);assert.match(app.markup(),/review-tag penalty">ワンペナ/);assert.match(app.markup(),/review-tag mistake">3パット以上/);
+  assert.doesNotMatch(app.markup(),/罰打以外の超過あり|ほかの超過なし|判定・内訳|補正後も基準を|1パットでカバー/);
+  const before=JSON.stringify(app.database());app.click({reviewFilter:'all'});assert.match(app.markup(),/対象 6H/);assert.match(app.markup(),/data-review-hole="2"/);
+  app.click({reviewFilter:'triple'});assert.match(app.markup(),/対象 3H/);assert.equal(JSON.stringify(app.database()),before);
+  app.click({action:'resume'});assert.doesNotMatch(app.markup(),/大叩きの振り返り/);
+});

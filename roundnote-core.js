@@ -14,6 +14,7 @@
   const CLUBS = Object.freeze({ driver: 'ドライバー', wood_ut: 'ウッド・ユーティリティ', iron: 'アイアン', wedge: 'ウェッジ' });
   const LATER_CLUBS = Object.freeze(Object.fromEntries(Object.entries(CLUBS).filter(([key]) => key !== 'driver')));
   const OB_DIRECTIONS = Object.freeze({ left: '左', right: '右', other: 'その他' });
+  const PENALTY_STAGES = Object.freeze({ tee: 'ティーショット', long: '50yまで', short: 'アプローチ' });
   const automaticStart = name => ({ IN: 10, OUT: 1 })[String(name).trim().toUpperCase()] || null;
   const normalizeCourseStarts = (names, starts) => normalizeCourseNames(names).map((name, i) => automaticStart(name) || ([1, 10].includes(starts?.[i]) ? starts[i] : i * 9 + 1));
   const holeNumber = (round, index) => normalizeCourseStarts(round.courseNames, round.courseStarts)[index < 9 ? 0 : 1] + index % 9;
@@ -25,7 +26,7 @@
   const isObject = value => !!value && typeof value === 'object' && !Array.isArray(value);
   const finite = value => typeof value === 'number' && Number.isFinite(value);
   const validCount = (value, max) => Number.isInteger(value) && value >= 0 && value <= max;
-  const blankHole = () => ({ par: 4, long: null, short: null, putts: null, obTee: 0, obLater: 0, direct: false, tee: null, teeShort: false, approach: null, teeClub: null, bunker: 0, laterOB: [] });
+  const blankHole = () => ({ par: 4, long: null, short: null, putts: null, obTee: 0, obLater: 0, direct: false, tee: null, teeShort: false, approach: null, teeClub: null, bunker: 0, laterOB: [], onePenalties: [] });
   const today = () => {
     const date = new Date();
     return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
@@ -33,7 +34,7 @@
   const score = h => [h.long, h.short, h.putts].every(finite) ? h.long + h.short + h.putts : null;
   const onCount = h => [h.long, h.short].every(finite) ? h.long + h.short : null;
   const bogeyOn = h => onCount(h) === null ? null : onCount(h) <= h.par - 1;
-  const started = h => [h.long, h.short, h.putts].some(finite) || h.obTee > 0 || h.obLater > 0 || h.bunker > 0 || h.tee !== null || h.teeShort === true || h.approach !== null || h.par !== 4 || !!h.teeClub;
+  const started = h => [h.long, h.short, h.putts].some(finite) || h.obTee > 0 || h.obLater > 0 || h.bunker > 0 || h.onePenalties?.length > 0 || h.tee !== null || h.teeShort === true || h.approach !== null || h.par !== 4 || !!h.teeClub;
   const percent = (numerator, denominator) => denominator ? numerator / denominator * 100 : null;
   const copy = value => JSON.parse(JSON.stringify(value));
 
@@ -50,9 +51,11 @@
       obTee: validCount(h.obTee, 9) ? h.obTee : 0,
       obLater: validCount(h.obLater, 9) ? h.obLater : 0,
       bunker: validCount(h.bunker, 9) ? h.bunker : null,
+      onePenalties: Array.isArray(h.onePenalties) ? h.onePenalties.slice(0, 9).filter(p => p && Object.hasOwn(PENALTY_STAGES, p.stage)).map(p => ({ stage: p.stage })) : [],
       laterOB: Array.from({ length: validCount(h.obLater, 9) ? h.obLater : 0 }, (_, i) => ({
         direction: Object.hasOwn(OB_DIRECTIONS, h.laterOB?.[i]?.direction) ? h.laterOB[i].direction : null,
-        club: Object.hasOwn(LATER_CLUBS, h.laterOB?.[i]?.club) ? h.laterOB[i].club : null })),
+        club: Object.hasOwn(LATER_CLUBS, h.laterOB?.[i]?.club) ? h.laterOB[i].club : null,
+        ...(['long', 'short'].includes(h.laterOB?.[i]?.stage) ? { stage: h.laterOB[i].stage } : {}) })),
       direct, tee: h.tee === 'good' ? 'straight' : DIRECTION_KEYS.includes(h.tee) ? h.tee : null,
       // Absence in historical records is unknown, rather than an observed non-short.
       teeShort: typeof h.teeShort === 'boolean' ? h.teeShort : null,
@@ -86,7 +89,7 @@
   }
 
   function stableLegacyId(raw) {
-    const content = JSON.stringify({ date: raw.date || '', place: raw.place || '', holes: raw.holes.map(h => { const { teeClub, bunker, laterOB, ...legacyHole } = normalizeHole(h); return legacyHole; }) });
+    const content = JSON.stringify({ date: raw.date || '', place: raw.place || '', holes: raw.holes.map(h => { const { teeClub, bunker, laterOB, onePenalties, ...legacyHole } = normalizeHole(h); return legacyHole; }) });
     let hash = 2166136261;
     for (let i = 0; i < content.length; i++) hash = Math.imul(hash ^ content.charCodeAt(i), 16777619);
     return `legacy-${(hash >>> 0).toString(16).padStart(8, '0')}`;
@@ -143,9 +146,14 @@
     for (const key of ['long', 'short', 'putts']) assert(h[key] === null || validCount(h[key], 30), `${context}の打数が不正です。`);
     for (const key of ['obTee', 'obLater']) assert(validCount(h[key], 9), `${context}のOB回数が不正です。`);
     assert(h.bunker === undefined || h.bunker === null || validCount(h.bunker, 9), `${context}のバンカー回数が不正です。`);
+    if (h.onePenalties !== undefined) {
+      assert(Array.isArray(h.onePenalties) && h.onePenalties.length <= 9, `${context}のワンペナ回数が不正です。`);
+      h.onePenalties.forEach(p => assert(isObject(p) && typeof p.stage === 'string' && Object.hasOwn(PENALTY_STAGES, p.stage), `${context}のワンペナの発生したショットが不正です。`));
+    }
     if (h.laterOB !== undefined) {
       assert(Array.isArray(h.laterOB) && h.laterOB.length === h.obLater, `${context}のOB回数と詳細が一致しません。`);
       h.laterOB.forEach(ob => {
+        assert(ob && (ob.stage === undefined || ob.stage === 'long' || ob.stage === 'short'), `${context}のOBの発生したショットが不正です。`);
         assert(isObject(ob) && (ob.direction === null || (typeof ob.direction === 'string' && Object.hasOwn(OB_DIRECTIONS, ob.direction))) &&
           (ob.club === null || (typeof ob.club === 'string' && Object.hasOwn(LATER_CLUBS, ob.club))), `${context}の2打目以降OB詳細が不正です。`);
       });
@@ -218,6 +226,43 @@
     assert(rounds.length <= 2000, 'ラウンド履歴は2000件までです。取り込み前に履歴を整理してください。');
     const currentRoundId = hadData && rounds.some(round => round.id === existing.currentRoundId) ? existing.currentRoundId : imported.currentRoundId;
     return { schemaVersion: SCHEMA_VERSION, currentRoundId, goals: { ...(hadData ? existing.goals : imported.goals) }, rounds };
+  }
+
+  function penaltyAdjusted(value) {
+    const h = normalizeHole(value), adjusted = { long: h.long, short: h.short, putts: h.putts };
+    const subtract = (stage, amount) => { const key = stage === 'tee' ? 'long' : stage; if (finite(adjusted[key])) adjusted[key] -= amount; };
+    subtract('long', 2 * h.obTee);
+    h.laterOB.forEach(ob => subtract(ob.stage || 'long', 2));
+    h.onePenalties.forEach(p => subtract(p.stage, 1));
+    return adjusted;
+  }
+
+  function reviewHole(value) {
+    const h = normalizeHole(value), adjusted = penaltyAdjusted(h), total = score(h);
+    const tags = [];
+    if (h.obTee + h.obLater > 0) tags.push('OB');
+    if (h.onePenalties.length) tags.push('ワンペナ');
+    const hasPenalty = tags.length > 0;
+    if (total === null) return { status: 'incomplete', score: null, tags, causes: [], hasPenalty, adjusted };
+    if (Object.values(adjusted).some(n => n < 0) || (!h.direct && adjusted.short < 1) || (h.direct && adjusted.short !== 0)) {
+      return { status: 'invalid', score: total, tags: [...tags, '入力を確認'], causes: [], hasPenalty, adjusted };
+    }
+    const causes = [];
+    if (adjusted.long + (h.direct ? 0 : 1) > h.par - 1) causes.push('50yまで');
+    if (!h.direct && adjusted.short >= 2) causes.push('アプローチ2打以上');
+    if (adjusted.putts >= 3) causes.push('3パット以上');
+    return { status: 'ready', score: total, tags: [...tags, ...causes], causes, hasPenalty, adjusted };
+  }
+
+  function reviewRound(round, filter = 'double') {
+    const rows = round.holes.map((h, index) => ({ ...reviewHole(h), index, number: holeNumber(round, index), half: index < 9 ? 0 : 1, par: h.par }))
+      .filter(row => row.status !== 'incomplete' && (filter === 'all' || row.score - row.par >= (filter === 'triple' ? 3 : 2)));
+    const ready = rows.filter(row => row.status === 'ready');
+    return { rows, penaltyOnly: ready.filter(r => r.hasPenalty && !r.causes.length).length,
+      both: ready.filter(r => r.hasPenalty && r.causes.length).length,
+      mistakeOnly: ready.filter(r => !r.hasPenalty && r.causes.length).length,
+      noIssue: ready.filter(r => !r.hasPenalty && !r.causes.length).length,
+      invalid: rows.filter(r => r.status === 'invalid').length };
   }
 
   function analyze(values) {
@@ -296,5 +341,6 @@
 
   return Object.freeze({ SCHEMA_VERSION, DEFAULT_GOALS, DEFAULT_COURSE_NAMES, normalizeCourseNames, TEE, CLUBS, APPROACH, blankHole, newRound, normalizeHole, normalizeGoals,
     LATER_CLUBS, OB_DIRECTIONS, automaticStart, normalizeCourseStarts, holeNumber, blankLaterOB,
+    PENALTY_STAGES, penaltyAdjusted, reviewHole, reviewRound,
     migrate, validateImport, mergeDatabases, analyze, teeShotBreakdown, compare, score, onCount, bogeyOn, started, hasRoundData });
 });

@@ -348,3 +348,58 @@ test('course numbers preserve playing order with IN first and independent custom
   }
   const bad=makeDatabase(r);bad.rounds[0].courseStarts=[0,10];assert.throws(()=>Core.validateImport(bad));
 });
+
+test('penalty review tags separate penalties from other mistakes without inferring one-putt recovery', () => {
+  const cases = [
+    [hole({long:4,obTee:1}), ['OB']],
+    [hole({long:5,putts:1,obTee:1}), ['OB','50yまで']],
+    [hole({short:2,putts:1}), ['アプローチ2打以上']],
+    [hole({putts:3}), ['3パット以上']],
+    [hole({long:3,onePenalties:[{stage:'tee'}]}), ['ワンペナ']],
+    [hole({long:3,onePenalties:[{stage:'long'}]}), ['ワンペナ']],
+    [hole({short:2,onePenalties:[{stage:'short'}]}), ['ワンペナ']],
+    [hole({short:3,onePenalties:[{stage:'short'}]}), ['ワンペナ','アプローチ2打以上']],
+    [hole({short:3,obLater:1,laterOB:[{direction:null,club:null,stage:'short'}]}), ['OB']],
+    [hole({long:4,obLater:1}), ['OB']],
+    [hole({par:3,long:4,short:0,direct:true,obTee:1}), ['OB']],
+    [hole({par:5,long:4,short:2,putts:3}), ['50yまで','アプローチ2打以上','3パット以上']],
+  ];
+  for (const [h,tags] of cases) {
+    const before=JSON.stringify(h), review=Core.reviewHole(h);
+    assert.equal(review.status,'ready');assert.deepEqual(review.tags,tags);
+    assert.equal(review.score,Core.score(h));assert.equal(JSON.stringify(h),before);
+    assert.ok(review.tags.every(t=>!t.includes('カバー')));
+  }
+  assert.equal(Core.reviewHole(hole({long:null,obTee:1})).status,'incomplete');
+  for(const h of [hole({long:1,obTee:1}),hole({short:1,onePenalties:[{stage:'short'}]})]) {
+    const r=Core.reviewHole(h);assert.equal(r.status,'invalid');assert.deepEqual(r.causes,[]);assert.ok(r.tags.includes('入力を確認'));
+  }
+});
+
+test('penalty review filters completed holes by actual score and uses playing-order hole labels', () => {
+  const r=round({courseNames:['IN','OUT'],holes:[
+    hole({long:4,obTee:1}),hole({long:5,putts:1,obTee:1}),hole({short:2,putts:1}),
+    hole({putts:3}),hole({long:3,onePenalties:[{stage:'long'}]}),hole({short:3,onePenalties:[{stage:'short'}]}),
+    ...Array.from({length:12},()=>Core.blankHole())]});
+  const summary=Core.reviewRound(r);
+  assert.deepEqual(summary.rows.map(x=>x.number),[10,11,13,14,15]);
+  assert.deepEqual([summary.penaltyOnly,summary.both,summary.mistakeOnly],[2,2,1]);
+  assert.equal(Core.reviewRound(r,'triple').rows.length,3);
+  assert.equal(Core.reviewRound(r,'all').rows.length,6);
+  assert.equal(Core.reviewRound(r,'all').mistakeOnly,2);
+  assert.equal(Core.reviewRound(round({holes:full()}),'all').noIssue,18);
+});
+
+test('one-penalty and per-OB stages round-trip strictly, while old data and legacy IDs remain compatible', () => {
+  const old=round();old.holes.forEach(h=>delete h.onePenalties);
+  const db=Core.validateImport(makeDatabase(old));assert.deepEqual(db.rounds[0].holes[0].onePenalties,[]);
+  const h=hole({obLater:1,laterOB:[{direction:'left',club:'iron',stage:'short'}],onePenalties:[{stage:'tee'},{stage:'short'}]});
+  const data=makeDatabase(round({holes:[h,...Array.from({length:17},()=>Core.blankHole())]}));
+  assert.deepEqual(Core.validateImport(JSON.stringify(data)).rounds[0].holes[0],Core.normalizeHole(h));
+  for(const mutate of [h=>h.onePenalties=null,h=>h.onePenalties=Array.from({length:10},()=>({stage:'long'})),h=>h.onePenalties=[{stage:'putts'}],h=>h.onePenalties=[{stage:['tee']}],h=>h.laterOB[0].stage='tee',h=>h.laterOB[0].stage=null]) {
+    const invalid=JSON.parse(JSON.stringify(data));mutate(invalid.rounds[0].holes[0]);assert.throws(()=>Core.validateImport(invalid));
+  }
+  const legacy={date:old.date,place:old.place,holes:old.holes};const id=Core.migrate(legacy).rounds[0].id;
+  legacy.holes[0].onePenalties=[{stage:'long'}];assert.equal(Core.migrate(legacy).rounds[0].id,id);
+  const blank=Core.blankHole();blank.onePenalties.push({stage:'long'});assert.equal(Core.started(blank),true);
+});

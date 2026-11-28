@@ -25,6 +25,31 @@ def make_round(identifier='round-one', day='2026-11-01'):
 
 
 class ImportTests(unittest.TestCase):
+    def test_penalty_events_and_review_survive_excel_and_match_browser(self):
+        record = make_round()
+        h = record['holes'][0]
+        h.update(long=3, short=3, obLater=1, laterOB=[{'direction': 'right', 'club': 'wedge', 'stage': 'short'}], onePenalties=[{'stage': 'tee'}])
+        normalized = excel.normalize_round(record)
+        data = {'schemaVersion': 2, 'currentRoundId': record['id'], 'goals': excel.DEFAULT_GOALS, 'rounds': [record]}
+        js = "const c=require('./roundnote-core');const r=c.validateImport(JSON.parse(process.argv[1])).rounds[0];console.log(JSON.stringify({round:r,tags:c.reviewHole(r.holes[0]).tags}));"
+        browser = json.loads(subprocess.check_output(['node', '-e', js, json.dumps(data)], cwd=ROOT, text=True))
+        self.assertEqual(normalized, browser['round'])
+        self.assertEqual(excel.review_hole(normalized['holes'][0]), browser['tags'])
+        self.assertEqual(browser['tags'], ['OB', 'ワンペナ'])
+        excel.write_workbook([normalized], self.output)
+        book = load_workbook(self.output, data_only=True)
+        self.assertEqual(book[excel.DETAIL]['AG2'].value, 1)
+        self.assertIn('ティーショット', book[excel.DETAIL]['AH2'].value)
+        self.assertEqual(book[excel.DETAIL]['AI2'].value, 'OB・ワンペナ')
+        self.assertIn('アプローチ', book[excel.DETAIL]['AF2'].value)
+        book.close()
+        restored = excel.previous_rounds(self.output)[0]
+        self.assertEqual(restored, normalized)
+        for key, val in [('onePenalties', None), ('onePenalties', [{'stage': 'putts'}]), ('onePenalties', [{'stage': ['tee']}]), ('onePenalties', [{'stage': 'long'}] * 10), ('laterOB', [{'direction': None, 'club': None, 'stage': 'tee'}])]:
+            invalid = json.loads(json.dumps(record)); invalid['holes'][0][key] = val
+            with self.assertRaises(ValueError):
+                excel.normalize_round(invalid)
+
     def test_hole_details_and_in_first_numbering_survive_workbook_updates(self):
         record = make_round()
         record['courseNames'] = ['IN', 'OUT']
