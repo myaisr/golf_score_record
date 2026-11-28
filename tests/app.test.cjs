@@ -4,6 +4,7 @@ const { readFileSync } = require('node:fs');
 const { join } = require('node:path');
 const vm = require('node:vm');
 const Core = require('../roundnote-core.js');
+const Views = require('../roundnote-views.js');
 
 const normalKey = 'roundnote-golf-v2';
 const previewKey = 'roundnote-golf-ui-preview-v2';
@@ -61,7 +62,7 @@ function openApp({ preview = true, storage = new Map(), storageFails = false, co
     static revokeObjectURL() {}
   }
   const context = {
-    document, RoundnoteCore: Core,
+    document, RoundnoteCore: Core, RoundnoteViews: Views,
     localStorage: { getItem: key => storage.get(key), setItem(key, value) { if (storageFails) throw new Error('Quota exceeded'); storage.set(key, value); } },
     location: { search: preview ? '?preview=1' : '', protocol: 'http:' },
     URLSearchParams, URL: TestURL, Blob, File: fileConstructor, atob: value => Buffer.from(value, 'base64').toString('binary'), navigator: browserNavigator, window: { scrollTo() {} },

@@ -403,3 +403,34 @@ test('one-penalty and per-OB stages round-trip strictly, while old data and lega
   legacy.holes[0].onePenalties=[{stage:'long'}];assert.equal(Core.migrate(legacy).rounds[0].id,id);
   const blank=Core.blankHole();blank.onePenalties.push({stage:'long'});assert.equal(Core.started(blank),true);
 });
+
+test('shared scorecard and review rules retain captured pre-refactor boundary behavior', () => {
+  const fixtures = require('./fixtures/penalty-cases.json').cases;
+  for (const { name, hole: h, expected } of fixtures) {
+    const before = JSON.stringify(h);
+    const review = Core.reviewHole(h);
+    assert.equal(review.status, expected.status, `${name}: review status`);
+    assert.equal(review.score, expected.score, `${name}: actual score`);
+    assert.deepEqual(review.tags, expected.tags, `${name}: review tags`);
+    assert.deepEqual(Core.penaltyAdjusted(h), expected.adjusted, `${name}: penalty adjustments`);
+    for (const field of ['long', 'short', 'putts', 'ob', 'score']) {
+      assert.equal(Core.scorecardWarning(h, field), expected.warnings[field], `${name}: ${field} warning`);
+      assert.equal(Core.scorecardTone(h, field), expected.tones[field], `${name}: ${field} color`);
+    }
+    assert.equal(JSON.stringify(h), before, `${name}: source record is unchanged`);
+  }
+});
+
+test('scorecard warnings retain partial/raw semantics independently of normalized review eligibility', () => {
+  const raw = hole({ long: 3, short: 2, direct: true });
+  // The historical color function uses the recorded direct flag, whereas a
+  // normalized review repairs a contradictory direct flag before judging it.
+  assert.equal(Core.scorecardWarning(raw, 'long'), false);
+  assert.deepEqual(Core.reviewHole(raw).causes, ['50yまで', 'アプローチ2打以上']);
+  const partial = hole({ long: null, putts: 3 });
+  assert.equal(Core.reviewHole(partial).status, 'incomplete');
+  assert.equal(Core.scorecardWarning(partial, 'putts'), true);
+  assert.equal(Core.scorecardTone(partial, 'score'), '');
+  assert.equal(Core.scorecardWarning(partial, 'head'), false);
+  assert.equal(Core.scorecardTone(partial, 'head'), '');
+});

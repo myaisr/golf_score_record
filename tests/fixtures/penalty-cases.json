@@ -1,0 +1,2178 @@
+{
+  "cases": [
+    {
+      "name": "par-3-bogey-on-boundary",
+      "hole": {
+        "par": 3,
+        "long": 1,
+        "short": 1,
+        "putts": 2,
+        "obTee": 0,
+        "obLater": 0,
+        "direct": false,
+        "tee": null,
+        "teeShort": false,
+        "approach": null,
+        "teeClub": null,
+        "bunker": 0,
+        "laterOB": [],
+        "onePenalties": []
+      },
+      "expected": {
+        "status": "ready",
+        "score": 4,
+        "tags": [],
+        "adjusted": {
+          "long": 1,
+          "short": 1,
+          "putts": 2
+        },
+        "warnings": {
+          "long": false,
+          "short": false,
+          "putts": false,
+          "ob": false,
+          "score": false
+        },
+        "tones": {
+          "long": "",
+          "short": "",
+          "putts": "",
+          "ob": "",
+          "score": ""
+        }
+      }
+    },
+    {
+      "name": "par-3-long-game-over-boundary",
+      "hole": {
+        "par": 3,
+        "long": 2,
+        "short": 1,
+        "putts": 2,
+        "obTee": 0,
+        "obLater": 0,
+        "direct": false,
+        "tee": null,
+        "teeShort": false,
+        "approach": null,
+        "teeClub": null,
+        "bunker": 0,
+        "laterOB": [],
+        "onePenalties": []
+      },
+      "expected": {
+        "status": "ready",
+        "score": 5,
+        "tags": [
+          "50yまで"
+        ],
+        "adjusted": {
+          "long": 2,
+          "short": 1,
+          "putts": 2
+        },
+        "warnings": {
+          "long": true,
+          "short": false,
+          "putts": false,
+          "ob": false,
+          "score": true
+        },
+        "tones": {
+          "long": "bad",
+          "short": "",
+          "putts": "",
+          "ob": "",
+          "score": "bad"
+        }
+      }
+    },
+    {
+      "name": "par-3-direct-on-boundary",
+      "hole": {
+        "par": 3,
+        "long": 2,
+        "short": 0,
+        "putts": 2,
+        "obTee": 0,
+        "obLater": 0,
+        "direct": true,
+        "tee": null,
+        "teeShort": false,
+        "approach": null,
+        "teeClub": null,
+        "bunker": 0,
+        "laterOB": [],
+        "onePenalties": []
+      },
+      "expected": {
+        "status": "ready",
+        "score": 4,
+        "tags": [],
+        "adjusted": {
+          "long": 2,
+          "short": 0,
+          "putts": 2
+        },
+        "warnings": {
+          "long": false,
+          "short": false,
+          "putts": false,
+          "ob": false,
+          "score": false
+        },
+        "tones": {
+          "long": "",
+          "short": "",
+          "putts": "",
+          "ob": "",
+          "score": ""
+        }
+      }
+    },
+    {
+      "name": "par-3-direct-on-over-boundary",
+      "hole": {
+        "par": 3,
+        "long": 3,
+        "short": 0,
+        "putts": 2,
+        "obTee": 0,
+        "obLater": 0,
+        "direct": true,
+        "tee": null,
+        "teeShort": false,
+        "approach": null,
+        "teeClub": null,
+        "bunker": 0,
+        "laterOB": [],
+        "onePenalties": []
+      },
+      "expected": {
+        "status": "ready",
+        "score": 5,
+        "tags": [
+          "50yまで"
+        ],
+        "adjusted": {
+          "long": 3,
+          "short": 0,
+          "putts": 2
+        },
+        "warnings": {
+          "long": true,
+          "short": false,
+          "putts": false,
+          "ob": false,
+          "score": true
+        },
+        "tones": {
+          "long": "bad",
+          "short": "",
+          "putts": "",
+          "ob": "",
+          "score": "bad"
+        }
+      }
+    },
+    {
+      "name": "par-3-double-bogey",
+      "hole": {
+        "par": 3,
+        "long": 1,
+        "short": 1,
+        "putts": 3,
+        "obTee": 0,
+        "obLater": 0,
+        "direct": false,
+        "tee": null,
+        "teeShort": false,
+        "approach": null,
+        "teeClub": null,
+        "bunker": 0,
+        "laterOB": [],
+        "onePenalties": []
+      },
+      "expected": {
+        "status": "ready",
+        "score": 5,
+        "tags": [
+          "3パット以上"
+        ],
+        "adjusted": {
+          "long": 1,
+          "short": 1,
+          "putts": 3
+        },
+        "warnings": {
+          "long": false,
+          "short": false,
+          "putts": true,
+          "ob": false,
+          "score": true
+        },
+        "tones": {
+          "long": "",
+          "short": "",
+          "putts": "bad",
+          "ob": "",
+          "score": "bad"
+        }
+      }
+    },
+    {
+      "name": "par-3-triple-bogey",
+      "hole": {
+        "par": 3,
+        "long": 1,
+        "short": 1,
+        "putts": 4,
+        "obTee": 0,
+        "obLater": 0,
+        "direct": false,
+        "tee": null,
+        "teeShort": false,
+        "approach": null,
+        "teeClub": null,
+        "bunker": 0,
+        "laterOB": [],
+        "onePenalties": []
+      },
+      "expected": {
+        "status": "ready",
+        "score": 6,
+        "tags": [
+          "3パット以上"
+        ],
+        "adjusted": {
+          "long": 1,
+          "short": 1,
+          "putts": 4
+        },
+        "warnings": {
+          "long": false,
+          "short": false,
+          "putts": true,
+          "ob": false,
+          "score": true
+        },
+        "tones": {
+          "long": "",
+          "short": "",
+          "putts": "bad",
+          "ob": "",
+          "score": "triple"
+        }
+      }
+    },
+    {
+      "name": "par-4-bogey-on-boundary",
+      "hole": {
+        "par": 4,
+        "long": 2,
+        "short": 1,
+        "putts": 2,
+        "obTee": 0,
+        "obLater": 0,
+        "direct": false,
+        "tee": null,
+        "teeShort": false,
+        "approach": null,
+        "teeClub": null,
+        "bunker": 0,
+        "laterOB": [],
+        "onePenalties": []
+      },
+      "expected": {
+        "status": "ready",
+        "score": 5,
+        "tags": [],
+        "adjusted": {
+          "long": 2,
+          "short": 1,
+          "putts": 2
+        },
+        "warnings": {
+          "long": false,
+          "short": false,
+          "putts": false,
+          "ob": false,
+          "score": false
+        },
+        "tones": {
+          "long": "",
+          "short": "",
+          "putts": "",
+          "ob": "",
+          "score": ""
+        }
+      }
+    },
+    {
+      "name": "par-4-long-game-over-boundary",
+      "hole": {
+        "par": 4,
+        "long": 3,
+        "short": 1,
+        "putts": 2,
+        "obTee": 0,
+        "obLater": 0,
+        "direct": false,
+        "tee": null,
+        "teeShort": false,
+        "approach": null,
+        "teeClub": null,
+        "bunker": 0,
+        "laterOB": [],
+        "onePenalties": []
+      },
+      "expected": {
+        "status": "ready",
+        "score": 6,
+        "tags": [
+          "50yまで"
+        ],
+        "adjusted": {
+          "long": 3,
+          "short": 1,
+          "putts": 2
+        },
+        "warnings": {
+          "long": true,
+          "short": false,
+          "putts": false,
+          "ob": false,
+          "score": true
+        },
+        "tones": {
+          "long": "bad",
+          "short": "",
+          "putts": "",
+          "ob": "",
+          "score": "bad"
+        }
+      }
+    },
+    {
+      "name": "par-4-direct-on-boundary",
+      "hole": {
+        "par": 4,
+        "long": 3,
+        "short": 0,
+        "putts": 2,
+        "obTee": 0,
+        "obLater": 0,
+        "direct": true,
+        "tee": null,
+        "teeShort": false,
+        "approach": null,
+        "teeClub": null,
+        "bunker": 0,
+        "laterOB": [],
+        "onePenalties": []
+      },
+      "expected": {
+        "status": "ready",
+        "score": 5,
+        "tags": [],
+        "adjusted": {
+          "long": 3,
+          "short": 0,
+          "putts": 2
+        },
+        "warnings": {
+          "long": false,
+          "short": false,
+          "putts": false,
+          "ob": false,
+          "score": false
+        },
+        "tones": {
+          "long": "",
+          "short": "",
+          "putts": "",
+          "ob": "",
+          "score": ""
+        }
+      }
+    },
+    {
+      "name": "par-4-direct-on-over-boundary",
+      "hole": {
+        "par": 4,
+        "long": 4,
+        "short": 0,
+        "putts": 2,
+        "obTee": 0,
+        "obLater": 0,
+        "direct": true,
+        "tee": null,
+        "teeShort": false,
+        "approach": null,
+        "teeClub": null,
+        "bunker": 0,
+        "laterOB": [],
+        "onePenalties": []
+      },
+      "expected": {
+        "status": "ready",
+        "score": 6,
+        "tags": [
+          "50yまで"
+        ],
+        "adjusted": {
+          "long": 4,
+          "short": 0,
+          "putts": 2
+        },
+        "warnings": {
+          "long": true,
+          "short": false,
+          "putts": false,
+          "ob": false,
+          "score": true
+        },
+        "tones": {
+          "long": "bad",
+          "short": "",
+          "putts": "",
+          "ob": "",
+          "score": "bad"
+        }
+      }
+    },
+    {
+      "name": "par-4-double-bogey",
+      "hole": {
+        "par": 4,
+        "long": 2,
+        "short": 1,
+        "putts": 3,
+        "obTee": 0,
+        "obLater": 0,
+        "direct": false,
+        "tee": null,
+        "teeShort": false,
+        "approach": null,
+        "teeClub": null,
+        "bunker": 0,
+        "laterOB": [],
+        "onePenalties": []
+      },
+      "expected": {
+        "status": "ready",
+        "score": 6,
+        "tags": [
+          "3パット以上"
+        ],
+        "adjusted": {
+          "long": 2,
+          "short": 1,
+          "putts": 3
+        },
+        "warnings": {
+          "long": false,
+          "short": false,
+          "putts": true,
+          "ob": false,
+          "score": true
+        },
+        "tones": {
+          "long": "",
+          "short": "",
+          "putts": "bad",
+          "ob": "",
+          "score": "bad"
+        }
+      }
+    },
+    {
+      "name": "par-4-triple-bogey",
+      "hole": {
+        "par": 4,
+        "long": 2,
+        "short": 1,
+        "putts": 4,
+        "obTee": 0,
+        "obLater": 0,
+        "direct": false,
+        "tee": null,
+        "teeShort": false,
+        "approach": null,
+        "teeClub": null,
+        "bunker": 0,
+        "laterOB": [],
+        "onePenalties": []
+      },
+      "expected": {
+        "status": "ready",
+        "score": 7,
+        "tags": [
+          "3パット以上"
+        ],
+        "adjusted": {
+          "long": 2,
+          "short": 1,
+          "putts": 4
+        },
+        "warnings": {
+          "long": false,
+          "short": false,
+          "putts": true,
+          "ob": false,
+          "score": true
+        },
+        "tones": {
+          "long": "",
+          "short": "",
+          "putts": "bad",
+          "ob": "",
+          "score": "triple"
+        }
+      }
+    },
+    {
+      "name": "par-5-bogey-on-boundary",
+      "hole": {
+        "par": 5,
+        "long": 3,
+        "short": 1,
+        "putts": 2,
+        "obTee": 0,
+        "obLater": 0,
+        "direct": false,
+        "tee": null,
+        "teeShort": false,
+        "approach": null,
+        "teeClub": null,
+        "bunker": 0,
+        "laterOB": [],
+        "onePenalties": []
+      },
+      "expected": {
+        "status": "ready",
+        "score": 6,
+        "tags": [],
+        "adjusted": {
+          "long": 3,
+          "short": 1,
+          "putts": 2
+        },
+        "warnings": {
+          "long": false,
+          "short": false,
+          "putts": false,
+          "ob": false,
+          "score": false
+        },
+        "tones": {
+          "long": "",
+          "short": "",
+          "putts": "",
+          "ob": "",
+          "score": ""
+        }
+      }
+    },
+    {
+      "name": "par-5-long-game-over-boundary",
+      "hole": {
+        "par": 5,
+        "long": 4,
+        "short": 1,
+        "putts": 2,
+        "obTee": 0,
+        "obLater": 0,
+        "direct": false,
+        "tee": null,
+        "teeShort": false,
+        "approach": null,
+        "teeClub": null,
+        "bunker": 0,
+        "laterOB": [],
+        "onePenalties": []
+      },
+      "expected": {
+        "status": "ready",
+        "score": 7,
+        "tags": [
+          "50yまで"
+        ],
+        "adjusted": {
+          "long": 4,
+          "short": 1,
+          "putts": 2
+        },
+        "warnings": {
+          "long": true,
+          "short": false,
+          "putts": false,
+          "ob": false,
+          "score": true
+        },
+        "tones": {
+          "long": "bad",
+          "short": "",
+          "putts": "",
+          "ob": "",
+          "score": "bad"
+        }
+      }
+    },
+    {
+      "name": "par-5-direct-on-boundary",
+      "hole": {
+        "par": 5,
+        "long": 4,
+        "short": 0,
+        "putts": 2,
+        "obTee": 0,
+        "obLater": 0,
+        "direct": true,
+        "tee": null,
+        "teeShort": false,
+        "approach": null,
+        "teeClub": null,
+        "bunker": 0,
+        "laterOB": [],
+        "onePenalties": []
+      },
+      "expected": {
+        "status": "ready",
+        "score": 6,
+        "tags": [],
+        "adjusted": {
+          "long": 4,
+          "short": 0,
+          "putts": 2
+        },
+        "warnings": {
+          "long": false,
+          "short": false,
+          "putts": false,
+          "ob": false,
+          "score": false
+        },
+        "tones": {
+          "long": "",
+          "short": "",
+          "putts": "",
+          "ob": "",
+          "score": ""
+        }
+      }
+    },
+    {
+      "name": "par-5-direct-on-over-boundary",
+      "hole": {
+        "par": 5,
+        "long": 5,
+        "short": 0,
+        "putts": 2,
+        "obTee": 0,
+        "obLater": 0,
+        "direct": true,
+        "tee": null,
+        "teeShort": false,
+        "approach": null,
+        "teeClub": null,
+        "bunker": 0,
+        "laterOB": [],
+        "onePenalties": []
+      },
+      "expected": {
+        "status": "ready",
+        "score": 7,
+        "tags": [
+          "50yまで"
+        ],
+        "adjusted": {
+          "long": 5,
+          "short": 0,
+          "putts": 2
+        },
+        "warnings": {
+          "long": true,
+          "short": false,
+          "putts": false,
+          "ob": false,
+          "score": true
+        },
+        "tones": {
+          "long": "bad",
+          "short": "",
+          "putts": "",
+          "ob": "",
+          "score": "bad"
+        }
+      }
+    },
+    {
+      "name": "par-5-double-bogey",
+      "hole": {
+        "par": 5,
+        "long": 3,
+        "short": 1,
+        "putts": 3,
+        "obTee": 0,
+        "obLater": 0,
+        "direct": false,
+        "tee": null,
+        "teeShort": false,
+        "approach": null,
+        "teeClub": null,
+        "bunker": 0,
+        "laterOB": [],
+        "onePenalties": []
+      },
+      "expected": {
+        "status": "ready",
+        "score": 7,
+        "tags": [
+          "3パット以上"
+        ],
+        "adjusted": {
+          "long": 3,
+          "short": 1,
+          "putts": 3
+        },
+        "warnings": {
+          "long": false,
+          "short": false,
+          "putts": true,
+          "ob": false,
+          "score": true
+        },
+        "tones": {
+          "long": "",
+          "short": "",
+          "putts": "bad",
+          "ob": "",
+          "score": "bad"
+        }
+      }
+    },
+    {
+      "name": "par-5-triple-bogey",
+      "hole": {
+        "par": 5,
+        "long": 3,
+        "short": 1,
+        "putts": 4,
+        "obTee": 0,
+        "obLater": 0,
+        "direct": false,
+        "tee": null,
+        "teeShort": false,
+        "approach": null,
+        "teeClub": null,
+        "bunker": 0,
+        "laterOB": [],
+        "onePenalties": []
+      },
+      "expected": {
+        "status": "ready",
+        "score": 8,
+        "tags": [
+          "3パット以上"
+        ],
+        "adjusted": {
+          "long": 3,
+          "short": 1,
+          "putts": 4
+        },
+        "warnings": {
+          "long": false,
+          "short": false,
+          "putts": true,
+          "ob": false,
+          "score": true
+        },
+        "tones": {
+          "long": "",
+          "short": "",
+          "putts": "bad",
+          "ob": "",
+          "score": "triple"
+        }
+      }
+    },
+    {
+      "name": "approach-boundary",
+      "hole": {
+        "par": 4,
+        "long": 2,
+        "short": 1,
+        "putts": 2,
+        "obTee": 0,
+        "obLater": 0,
+        "direct": false,
+        "tee": null,
+        "teeShort": false,
+        "approach": null,
+        "teeClub": null,
+        "bunker": 0,
+        "laterOB": [],
+        "onePenalties": []
+      },
+      "expected": {
+        "status": "ready",
+        "score": 5,
+        "tags": [],
+        "adjusted": {
+          "long": 2,
+          "short": 1,
+          "putts": 2
+        },
+        "warnings": {
+          "long": false,
+          "short": false,
+          "putts": false,
+          "ob": false,
+          "score": false
+        },
+        "tones": {
+          "long": "",
+          "short": "",
+          "putts": "",
+          "ob": "",
+          "score": ""
+        }
+      }
+    },
+    {
+      "name": "approach-two-strokes-one-putt",
+      "hole": {
+        "par": 4,
+        "long": 2,
+        "short": 2,
+        "putts": 1,
+        "obTee": 0,
+        "obLater": 0,
+        "direct": false,
+        "tee": null,
+        "teeShort": false,
+        "approach": null,
+        "teeClub": null,
+        "bunker": 0,
+        "laterOB": [],
+        "onePenalties": []
+      },
+      "expected": {
+        "status": "ready",
+        "score": 5,
+        "tags": [
+          "アプローチ2打以上"
+        ],
+        "adjusted": {
+          "long": 2,
+          "short": 2,
+          "putts": 1
+        },
+        "warnings": {
+          "long": false,
+          "short": true,
+          "putts": false,
+          "ob": false,
+          "score": false
+        },
+        "tones": {
+          "long": "",
+          "short": "bad",
+          "putts": "",
+          "ob": "",
+          "score": ""
+        }
+      }
+    },
+    {
+      "name": "two-putt-boundary",
+      "hole": {
+        "par": 4,
+        "long": 2,
+        "short": 1,
+        "putts": 2,
+        "obTee": 0,
+        "obLater": 0,
+        "direct": false,
+        "tee": null,
+        "teeShort": false,
+        "approach": null,
+        "teeClub": null,
+        "bunker": 0,
+        "laterOB": [],
+        "onePenalties": []
+      },
+      "expected": {
+        "status": "ready",
+        "score": 5,
+        "tags": [],
+        "adjusted": {
+          "long": 2,
+          "short": 1,
+          "putts": 2
+        },
+        "warnings": {
+          "long": false,
+          "short": false,
+          "putts": false,
+          "ob": false,
+          "score": false
+        },
+        "tones": {
+          "long": "",
+          "short": "",
+          "putts": "",
+          "ob": "",
+          "score": ""
+        }
+      }
+    },
+    {
+      "name": "three-putt-boundary",
+      "hole": {
+        "par": 4,
+        "long": 2,
+        "short": 1,
+        "putts": 3,
+        "obTee": 0,
+        "obLater": 0,
+        "direct": false,
+        "tee": null,
+        "teeShort": false,
+        "approach": null,
+        "teeClub": null,
+        "bunker": 0,
+        "laterOB": [],
+        "onePenalties": []
+      },
+      "expected": {
+        "status": "ready",
+        "score": 6,
+        "tags": [
+          "3パット以上"
+        ],
+        "adjusted": {
+          "long": 2,
+          "short": 1,
+          "putts": 3
+        },
+        "warnings": {
+          "long": false,
+          "short": false,
+          "putts": true,
+          "ob": false,
+          "score": true
+        },
+        "tones": {
+          "long": "",
+          "short": "",
+          "putts": "bad",
+          "ob": "",
+          "score": "bad"
+        }
+      }
+    },
+    {
+      "name": "tee-ob-only",
+      "hole": {
+        "par": 4,
+        "long": 4,
+        "short": 1,
+        "putts": 2,
+        "obTee": 1,
+        "obLater": 0,
+        "direct": false,
+        "tee": null,
+        "teeShort": false,
+        "approach": null,
+        "teeClub": null,
+        "bunker": 0,
+        "laterOB": [],
+        "onePenalties": []
+      },
+      "expected": {
+        "status": "ready",
+        "score": 7,
+        "tags": [
+          "OB"
+        ],
+        "adjusted": {
+          "long": 2,
+          "short": 1,
+          "putts": 2
+        },
+        "warnings": {
+          "long": false,
+          "short": false,
+          "putts": false,
+          "ob": true,
+          "score": true
+        },
+        "tones": {
+          "long": "",
+          "short": "",
+          "putts": "",
+          "ob": "bad",
+          "score": "triple"
+        }
+      }
+    },
+    {
+      "name": "tee-ob-and-extra-long-game",
+      "hole": {
+        "par": 4,
+        "long": 5,
+        "short": 1,
+        "putts": 1,
+        "obTee": 1,
+        "obLater": 0,
+        "direct": false,
+        "tee": null,
+        "teeShort": false,
+        "approach": null,
+        "teeClub": null,
+        "bunker": 0,
+        "laterOB": [],
+        "onePenalties": []
+      },
+      "expected": {
+        "status": "ready",
+        "score": 7,
+        "tags": [
+          "OB",
+          "50yまで"
+        ],
+        "adjusted": {
+          "long": 3,
+          "short": 1,
+          "putts": 1
+        },
+        "warnings": {
+          "long": true,
+          "short": false,
+          "putts": false,
+          "ob": true,
+          "score": true
+        },
+        "tones": {
+          "long": "bad",
+          "short": "",
+          "putts": "",
+          "ob": "bad",
+          "score": "triple"
+        }
+      }
+    },
+    {
+      "name": "later-ob-implicit-long-stage",
+      "hole": {
+        "par": 4,
+        "long": 4,
+        "short": 1,
+        "putts": 2,
+        "obTee": 0,
+        "obLater": 1,
+        "direct": false,
+        "tee": null,
+        "teeShort": false,
+        "approach": null,
+        "teeClub": null,
+        "bunker": 0,
+        "laterOB": [
+          {
+            "direction": null,
+            "club": null
+          }
+        ],
+        "onePenalties": []
+      },
+      "expected": {
+        "status": "ready",
+        "score": 7,
+        "tags": [
+          "OB"
+        ],
+        "adjusted": {
+          "long": 2,
+          "short": 1,
+          "putts": 2
+        },
+        "warnings": {
+          "long": false,
+          "short": false,
+          "putts": false,
+          "ob": true,
+          "score": true
+        },
+        "tones": {
+          "long": "",
+          "short": "",
+          "putts": "",
+          "ob": "bad",
+          "score": "triple"
+        }
+      }
+    },
+    {
+      "name": "later-ob-explicit-long-stage",
+      "hole": {
+        "par": 4,
+        "long": 4,
+        "short": 1,
+        "putts": 2,
+        "obTee": 0,
+        "obLater": 1,
+        "direct": false,
+        "tee": null,
+        "teeShort": false,
+        "approach": null,
+        "teeClub": null,
+        "bunker": 0,
+        "laterOB": [
+          {
+            "direction": "left",
+            "club": "iron",
+            "stage": "long"
+          }
+        ],
+        "onePenalties": []
+      },
+      "expected": {
+        "status": "ready",
+        "score": 7,
+        "tags": [
+          "OB"
+        ],
+        "adjusted": {
+          "long": 2,
+          "short": 1,
+          "putts": 2
+        },
+        "warnings": {
+          "long": false,
+          "short": false,
+          "putts": false,
+          "ob": true,
+          "score": true
+        },
+        "tones": {
+          "long": "",
+          "short": "",
+          "putts": "",
+          "ob": "bad",
+          "score": "triple"
+        }
+      }
+    },
+    {
+      "name": "later-ob-approach-stage",
+      "hole": {
+        "par": 4,
+        "long": 2,
+        "short": 3,
+        "putts": 2,
+        "obTee": 0,
+        "obLater": 1,
+        "direct": false,
+        "tee": null,
+        "teeShort": false,
+        "approach": null,
+        "teeClub": null,
+        "bunker": 0,
+        "laterOB": [
+          {
+            "direction": "right",
+            "club": "wedge",
+            "stage": "short"
+          }
+        ],
+        "onePenalties": []
+      },
+      "expected": {
+        "status": "ready",
+        "score": 7,
+        "tags": [
+          "OB"
+        ],
+        "adjusted": {
+          "long": 2,
+          "short": 1,
+          "putts": 2
+        },
+        "warnings": {
+          "long": false,
+          "short": false,
+          "putts": false,
+          "ob": true,
+          "score": true
+        },
+        "tones": {
+          "long": "",
+          "short": "",
+          "putts": "",
+          "ob": "bad",
+          "score": "triple"
+        }
+      }
+    },
+    {
+      "name": "multiple-ob-different-stages",
+      "hole": {
+        "par": 4,
+        "long": 4,
+        "short": 3,
+        "putts": 1,
+        "obTee": 0,
+        "obLater": 2,
+        "direct": false,
+        "tee": null,
+        "teeShort": false,
+        "approach": null,
+        "teeClub": null,
+        "bunker": 0,
+        "laterOB": [
+          {
+            "direction": null,
+            "club": null,
+            "stage": "long"
+          },
+          {
+            "direction": null,
+            "club": null,
+            "stage": "short"
+          }
+        ],
+        "onePenalties": []
+      },
+      "expected": {
+        "status": "ready",
+        "score": 8,
+        "tags": [
+          "OB"
+        ],
+        "adjusted": {
+          "long": 2,
+          "short": 1,
+          "putts": 1
+        },
+        "warnings": {
+          "long": false,
+          "short": false,
+          "putts": false,
+          "ob": true,
+          "score": true
+        },
+        "tones": {
+          "long": "",
+          "short": "",
+          "putts": "",
+          "ob": "bad",
+          "score": "triple"
+        }
+      }
+    },
+    {
+      "name": "one-penalty-tee",
+      "hole": {
+        "par": 4,
+        "long": 3,
+        "short": 1,
+        "putts": 2,
+        "obTee": 0,
+        "obLater": 0,
+        "direct": false,
+        "tee": null,
+        "teeShort": false,
+        "approach": null,
+        "teeClub": null,
+        "bunker": 0,
+        "laterOB": [],
+        "onePenalties": [
+          {
+            "stage": "tee"
+          }
+        ]
+      },
+      "expected": {
+        "status": "ready",
+        "score": 6,
+        "tags": [
+          "ワンペナ"
+        ],
+        "adjusted": {
+          "long": 2,
+          "short": 1,
+          "putts": 2
+        },
+        "warnings": {
+          "long": false,
+          "short": false,
+          "putts": false,
+          "ob": false,
+          "score": true
+        },
+        "tones": {
+          "long": "",
+          "short": "",
+          "putts": "",
+          "ob": "",
+          "score": "bad"
+        }
+      }
+    },
+    {
+      "name": "one-penalty-long",
+      "hole": {
+        "par": 4,
+        "long": 3,
+        "short": 1,
+        "putts": 2,
+        "obTee": 0,
+        "obLater": 0,
+        "direct": false,
+        "tee": null,
+        "teeShort": false,
+        "approach": null,
+        "teeClub": null,
+        "bunker": 0,
+        "laterOB": [],
+        "onePenalties": [
+          {
+            "stage": "long"
+          }
+        ]
+      },
+      "expected": {
+        "status": "ready",
+        "score": 6,
+        "tags": [
+          "ワンペナ"
+        ],
+        "adjusted": {
+          "long": 2,
+          "short": 1,
+          "putts": 2
+        },
+        "warnings": {
+          "long": false,
+          "short": false,
+          "putts": false,
+          "ob": false,
+          "score": true
+        },
+        "tones": {
+          "long": "",
+          "short": "",
+          "putts": "",
+          "ob": "",
+          "score": "bad"
+        }
+      }
+    },
+    {
+      "name": "one-penalty-approach",
+      "hole": {
+        "par": 4,
+        "long": 2,
+        "short": 2,
+        "putts": 2,
+        "obTee": 0,
+        "obLater": 0,
+        "direct": false,
+        "tee": null,
+        "teeShort": false,
+        "approach": null,
+        "teeClub": null,
+        "bunker": 0,
+        "laterOB": [],
+        "onePenalties": [
+          {
+            "stage": "short"
+          }
+        ]
+      },
+      "expected": {
+        "status": "ready",
+        "score": 6,
+        "tags": [
+          "ワンペナ"
+        ],
+        "adjusted": {
+          "long": 2,
+          "short": 1,
+          "putts": 2
+        },
+        "warnings": {
+          "long": false,
+          "short": false,
+          "putts": false,
+          "ob": false,
+          "score": true
+        },
+        "tones": {
+          "long": "",
+          "short": "",
+          "putts": "",
+          "ob": "",
+          "score": "bad"
+        }
+      }
+    },
+    {
+      "name": "one-penalty-approach-and-extra-stroke",
+      "hole": {
+        "par": 4,
+        "long": 2,
+        "short": 3,
+        "putts": 2,
+        "obTee": 0,
+        "obLater": 0,
+        "direct": false,
+        "tee": null,
+        "teeShort": false,
+        "approach": null,
+        "teeClub": null,
+        "bunker": 0,
+        "laterOB": [],
+        "onePenalties": [
+          {
+            "stage": "short"
+          }
+        ]
+      },
+      "expected": {
+        "status": "ready",
+        "score": 7,
+        "tags": [
+          "ワンペナ",
+          "アプローチ2打以上"
+        ],
+        "adjusted": {
+          "long": 2,
+          "short": 2,
+          "putts": 2
+        },
+        "warnings": {
+          "long": false,
+          "short": true,
+          "putts": false,
+          "ob": false,
+          "score": true
+        },
+        "tones": {
+          "long": "",
+          "short": "bad",
+          "putts": "",
+          "ob": "",
+          "score": "triple"
+        }
+      }
+    },
+    {
+      "name": "multiple-one-penalties-different-stages",
+      "hole": {
+        "par": 4,
+        "long": 4,
+        "short": 2,
+        "putts": 2,
+        "obTee": 0,
+        "obLater": 0,
+        "direct": false,
+        "tee": null,
+        "teeShort": false,
+        "approach": null,
+        "teeClub": null,
+        "bunker": 0,
+        "laterOB": [],
+        "onePenalties": [
+          {
+            "stage": "tee"
+          },
+          {
+            "stage": "long"
+          },
+          {
+            "stage": "short"
+          }
+        ]
+      },
+      "expected": {
+        "status": "ready",
+        "score": 8,
+        "tags": [
+          "ワンペナ"
+        ],
+        "adjusted": {
+          "long": 2,
+          "short": 1,
+          "putts": 2
+        },
+        "warnings": {
+          "long": false,
+          "short": false,
+          "putts": false,
+          "ob": false,
+          "score": true
+        },
+        "tones": {
+          "long": "",
+          "short": "",
+          "putts": "",
+          "ob": "",
+          "score": "triple"
+        }
+      }
+    },
+    {
+      "name": "ob-and-one-penalty",
+      "hole": {
+        "par": 4,
+        "long": 5,
+        "short": 1,
+        "putts": 2,
+        "obTee": 1,
+        "obLater": 0,
+        "direct": false,
+        "tee": null,
+        "teeShort": false,
+        "approach": null,
+        "teeClub": null,
+        "bunker": 0,
+        "laterOB": [],
+        "onePenalties": [
+          {
+            "stage": "long"
+          }
+        ]
+      },
+      "expected": {
+        "status": "ready",
+        "score": 8,
+        "tags": [
+          "OB",
+          "ワンペナ"
+        ],
+        "adjusted": {
+          "long": 2,
+          "short": 1,
+          "putts": 2
+        },
+        "warnings": {
+          "long": false,
+          "short": false,
+          "putts": false,
+          "ob": true,
+          "score": true
+        },
+        "tones": {
+          "long": "",
+          "short": "",
+          "putts": "",
+          "ob": "bad",
+          "score": "triple"
+        }
+      }
+    },
+    {
+      "name": "all-three-shot-mistakes",
+      "hole": {
+        "par": 4,
+        "long": 3,
+        "short": 2,
+        "putts": 3,
+        "obTee": 0,
+        "obLater": 0,
+        "direct": false,
+        "tee": null,
+        "teeShort": false,
+        "approach": null,
+        "teeClub": null,
+        "bunker": 0,
+        "laterOB": [],
+        "onePenalties": []
+      },
+      "expected": {
+        "status": "ready",
+        "score": 8,
+        "tags": [
+          "50yまで",
+          "アプローチ2打以上",
+          "3パット以上"
+        ],
+        "adjusted": {
+          "long": 3,
+          "short": 2,
+          "putts": 3
+        },
+        "warnings": {
+          "long": true,
+          "short": true,
+          "putts": true,
+          "ob": false,
+          "score": true
+        },
+        "tones": {
+          "long": "bad",
+          "short": "bad",
+          "putts": "bad",
+          "ob": "",
+          "score": "triple"
+        }
+      }
+    },
+    {
+      "name": "blank-hole",
+      "hole": {
+        "par": 4,
+        "long": null,
+        "short": null,
+        "putts": null,
+        "obTee": 0,
+        "obLater": 0,
+        "direct": false,
+        "tee": null,
+        "teeShort": false,
+        "approach": null,
+        "teeClub": null,
+        "bunker": 0,
+        "laterOB": [],
+        "onePenalties": []
+      },
+      "expected": {
+        "status": "incomplete",
+        "score": null,
+        "tags": [],
+        "adjusted": {
+          "long": null,
+          "short": null,
+          "putts": null
+        },
+        "warnings": {
+          "long": false,
+          "short": false,
+          "putts": false,
+          "ob": false,
+          "score": false
+        },
+        "tones": {
+          "long": "",
+          "short": "",
+          "putts": "",
+          "ob": "",
+          "score": ""
+        }
+      }
+    },
+    {
+      "name": "unfinished-long-with-three-putts",
+      "hole": {
+        "par": 4,
+        "long": null,
+        "short": 1,
+        "putts": 3,
+        "obTee": 0,
+        "obLater": 0,
+        "direct": false,
+        "tee": null,
+        "teeShort": false,
+        "approach": null,
+        "teeClub": null,
+        "bunker": 0,
+        "laterOB": [],
+        "onePenalties": []
+      },
+      "expected": {
+        "status": "incomplete",
+        "score": null,
+        "tags": [],
+        "adjusted": {
+          "long": null,
+          "short": 1,
+          "putts": 3
+        },
+        "warnings": {
+          "long": false,
+          "short": false,
+          "putts": true,
+          "ob": false,
+          "score": false
+        },
+        "tones": {
+          "long": "",
+          "short": "",
+          "putts": "bad",
+          "ob": "",
+          "score": ""
+        }
+      }
+    },
+    {
+      "name": "unfinished-approach-with-long-game-warning",
+      "hole": {
+        "par": 4,
+        "long": 3,
+        "short": null,
+        "putts": 2,
+        "obTee": 0,
+        "obLater": 0,
+        "direct": false,
+        "tee": null,
+        "teeShort": false,
+        "approach": null,
+        "teeClub": null,
+        "bunker": 0,
+        "laterOB": [],
+        "onePenalties": []
+      },
+      "expected": {
+        "status": "incomplete",
+        "score": null,
+        "tags": [],
+        "adjusted": {
+          "long": 3,
+          "short": null,
+          "putts": 2
+        },
+        "warnings": {
+          "long": true,
+          "short": false,
+          "putts": false,
+          "ob": false,
+          "score": false
+        },
+        "tones": {
+          "long": "bad",
+          "short": "",
+          "putts": "",
+          "ob": "",
+          "score": ""
+        }
+      }
+    },
+    {
+      "name": "unfinished-putts-with-approach-warning",
+      "hole": {
+        "par": 4,
+        "long": 2,
+        "short": 2,
+        "putts": null,
+        "obTee": 0,
+        "obLater": 0,
+        "direct": false,
+        "tee": null,
+        "teeShort": false,
+        "approach": null,
+        "teeClub": null,
+        "bunker": 0,
+        "laterOB": [],
+        "onePenalties": []
+      },
+      "expected": {
+        "status": "incomplete",
+        "score": null,
+        "tags": [],
+        "adjusted": {
+          "long": 2,
+          "short": 2,
+          "putts": null
+        },
+        "warnings": {
+          "long": false,
+          "short": true,
+          "putts": false,
+          "ob": false,
+          "score": false
+        },
+        "tones": {
+          "long": "",
+          "short": "bad",
+          "putts": "",
+          "ob": "",
+          "score": ""
+        }
+      }
+    },
+    {
+      "name": "unfinished-penalty-interval",
+      "hole": {
+        "par": 4,
+        "long": null,
+        "short": 1,
+        "putts": 2,
+        "obTee": 0,
+        "obLater": 0,
+        "direct": false,
+        "tee": null,
+        "teeShort": false,
+        "approach": null,
+        "teeClub": null,
+        "bunker": 0,
+        "laterOB": [],
+        "onePenalties": [
+          {
+            "stage": "tee"
+          }
+        ]
+      },
+      "expected": {
+        "status": "incomplete",
+        "score": null,
+        "tags": [
+          "ワンペナ"
+        ],
+        "adjusted": {
+          "long": null,
+          "short": 1,
+          "putts": 2
+        },
+        "warnings": {
+          "long": false,
+          "short": false,
+          "putts": false,
+          "ob": false,
+          "score": false
+        },
+        "tones": {
+          "long": "",
+          "short": "",
+          "putts": "",
+          "ob": "",
+          "score": ""
+        }
+      }
+    },
+    {
+      "name": "invalid-negative-long-adjustment",
+      "hole": {
+        "par": 4,
+        "long": 1,
+        "short": 1,
+        "putts": 2,
+        "obTee": 1,
+        "obLater": 0,
+        "direct": false,
+        "tee": null,
+        "teeShort": false,
+        "approach": null,
+        "teeClub": null,
+        "bunker": 0,
+        "laterOB": [],
+        "onePenalties": []
+      },
+      "expected": {
+        "status": "invalid",
+        "score": 4,
+        "tags": [
+          "OB",
+          "入力を確認"
+        ],
+        "adjusted": {
+          "long": -1,
+          "short": 1,
+          "putts": 2
+        },
+        "warnings": {
+          "long": false,
+          "short": false,
+          "putts": false,
+          "ob": true,
+          "score": false
+        },
+        "tones": {
+          "long": "",
+          "short": "",
+          "putts": "",
+          "ob": "bad",
+          "score": ""
+        }
+      }
+    },
+    {
+      "name": "invalid-zero-approach-adjustment",
+      "hole": {
+        "par": 4,
+        "long": 2,
+        "short": 1,
+        "putts": 2,
+        "obTee": 0,
+        "obLater": 0,
+        "direct": false,
+        "tee": null,
+        "teeShort": false,
+        "approach": null,
+        "teeClub": null,
+        "bunker": 0,
+        "laterOB": [],
+        "onePenalties": [
+          {
+            "stage": "short"
+          }
+        ]
+      },
+      "expected": {
+        "status": "invalid",
+        "score": 5,
+        "tags": [
+          "ワンペナ",
+          "入力を確認"
+        ],
+        "adjusted": {
+          "long": 2,
+          "short": 0,
+          "putts": 2
+        },
+        "warnings": {
+          "long": false,
+          "short": false,
+          "putts": false,
+          "ob": false,
+          "score": false
+        },
+        "tones": {
+          "long": "",
+          "short": "",
+          "putts": "",
+          "ob": "",
+          "score": ""
+        }
+      }
+    },
+    {
+      "name": "invalid-negative-approach-adjustment-with-three-putts",
+      "hole": {
+        "par": 4,
+        "long": 2,
+        "short": 1,
+        "putts": 3,
+        "obTee": 0,
+        "obLater": 1,
+        "direct": false,
+        "tee": null,
+        "teeShort": false,
+        "approach": null,
+        "teeClub": null,
+        "bunker": 0,
+        "laterOB": [
+          {
+            "direction": null,
+            "club": null,
+            "stage": "short"
+          }
+        ],
+        "onePenalties": []
+      },
+      "expected": {
+        "status": "invalid",
+        "score": 6,
+        "tags": [
+          "OB",
+          "入力を確認"
+        ],
+        "adjusted": {
+          "long": 2,
+          "short": -1,
+          "putts": 3
+        },
+        "warnings": {
+          "long": false,
+          "short": false,
+          "putts": true,
+          "ob": true,
+          "score": true
+        },
+        "tones": {
+          "long": "",
+          "short": "",
+          "putts": "bad",
+          "ob": "bad",
+          "score": "bad"
+        }
+      }
+    },
+    {
+      "name": "invalid-zero-approach-without-direct",
+      "hole": {
+        "par": 4,
+        "long": 2,
+        "short": 0,
+        "putts": 2,
+        "obTee": 0,
+        "obLater": 0,
+        "direct": false,
+        "tee": null,
+        "teeShort": false,
+        "approach": null,
+        "teeClub": null,
+        "bunker": 0,
+        "laterOB": [],
+        "onePenalties": []
+      },
+      "expected": {
+        "status": "invalid",
+        "score": 4,
+        "tags": [
+          "入力を確認"
+        ],
+        "adjusted": {
+          "long": 2,
+          "short": 0,
+          "putts": 2
+        },
+        "warnings": {
+          "long": false,
+          "short": false,
+          "putts": false,
+          "ob": false,
+          "score": false
+        },
+        "tones": {
+          "long": "",
+          "short": "",
+          "putts": "",
+          "ob": "",
+          "score": ""
+        }
+      }
+    },
+    {
+      "name": "direct-on-with-tee-ob",
+      "hole": {
+        "par": 3,
+        "long": 4,
+        "short": 0,
+        "putts": 2,
+        "obTee": 1,
+        "obLater": 0,
+        "direct": true,
+        "tee": null,
+        "teeShort": false,
+        "approach": null,
+        "teeClub": null,
+        "bunker": 0,
+        "laterOB": [],
+        "onePenalties": []
+      },
+      "expected": {
+        "status": "ready",
+        "score": 6,
+        "tags": [
+          "OB"
+        ],
+        "adjusted": {
+          "long": 2,
+          "short": 0,
+          "putts": 2
+        },
+        "warnings": {
+          "long": false,
+          "short": false,
+          "putts": false,
+          "ob": true,
+          "score": true
+        },
+        "tones": {
+          "long": "",
+          "short": "",
+          "putts": "",
+          "ob": "bad",
+          "score": "triple"
+        }
+      }
+    },
+    {
+      "name": "direct-on-with-approach-penalty-invalid",
+      "hole": {
+        "par": 4,
+        "long": 3,
+        "short": 0,
+        "putts": 2,
+        "obTee": 0,
+        "obLater": 0,
+        "direct": true,
+        "tee": null,
+        "teeShort": false,
+        "approach": null,
+        "teeClub": null,
+        "bunker": 0,
+        "laterOB": [],
+        "onePenalties": [
+          {
+            "stage": "short"
+          }
+        ]
+      },
+      "expected": {
+        "status": "invalid",
+        "score": 5,
+        "tags": [
+          "ワンペナ",
+          "入力を確認"
+        ],
+        "adjusted": {
+          "long": 3,
+          "short": -1,
+          "putts": 2
+        },
+        "warnings": {
+          "long": false,
+          "short": false,
+          "putts": false,
+          "ob": false,
+          "score": false
+        },
+        "tones": {
+          "long": "",
+          "short": "",
+          "putts": "",
+          "ob": "",
+          "score": ""
+        }
+      }
+    },
+    {
+      "name": "zero-putts-chip-in",
+      "hole": {
+        "par": 4,
+        "long": 2,
+        "short": 1,
+        "putts": 0,
+        "obTee": 0,
+        "obLater": 0,
+        "direct": false,
+        "tee": null,
+        "teeShort": false,
+        "approach": null,
+        "teeClub": null,
+        "bunker": 0,
+        "laterOB": [],
+        "onePenalties": []
+      },
+      "expected": {
+        "status": "ready",
+        "score": 3,
+        "tags": [],
+        "adjusted": {
+          "long": 2,
+          "short": 1,
+          "putts": 0
+        },
+        "warnings": {
+          "long": false,
+          "short": false,
+          "putts": false,
+          "ob": false,
+          "score": false
+        },
+        "tones": {
+          "long": "",
+          "short": "",
+          "putts": "",
+          "ob": "",
+          "score": ""
+        }
+      }
+    }
+  ]
+}

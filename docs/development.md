@@ -40,7 +40,7 @@ python -m http.server 8000 --bind 127.0.0.1
 アプリ・データモデル・オフラインのテスト：
 
 ```bash
-node --test tests/core.test.cjs tests/app.test.cjs tests/offline.test.cjs
+node --test tests/*.test.cjs
 ```
 
 Excel取り込みのテスト：
@@ -53,7 +53,7 @@ python -m unittest discover -s tests -p test_excel_import.py -v
 
 ## GitHub Pagesへの公開
 
-GitHub Pagesでは **Settings → Pages → Deploy from a branch → main / (root)** を指定します。`index.html`、`app.js`、`roundnote-core.js`、`app.css`、`sw.js`、マニフェスト、アイコンを同じ階層で公開してください。Excel用PythonスクリプトはPages上では実行せず、PCで使用します。
+GitHub Pagesでは **Settings → Pages → Deploy from a branch → main / (root)** を指定します。`index.html`、`app.js`、`roundnote-core.js`、`roundnote-views.js`、`app.css`、`sw.js`、マニフェスト、アイコンを同じ階層で公開してください。Excel用PythonスクリプトはPages上では実行せず、PCで使用します。
 
 このリポジトリの公開URLは https://myaisr.github.io/golf_score_record/ です。`main` にマージするとPagesの公開処理が走ります。GitHubのActionsで「pages build and deployment」の成功を確認し、公開URLをオンラインで再読み込みしてください。
 
@@ -69,14 +69,15 @@ PWAの配信ファイルを更新した場合は `sw.js` のキャッシュ名�
 
 - `index.html`：静的エントリーポイント
 - `app.css`：既存のグリーン基調のレスポンシブUI
-- `app.js`：入力、画面遷移、保存、履歴、目標設定、JSON、PNG
+- `app.js`：状態・保存・画面遷移、機能別の操作処理、JSON、PNG
+- `roundnote-views.js`：入力・集計・履歴のHTML生成と表示用フォーマット。渡されたデータを変更せず、DOMやストレージには触れない
 - `roundnote-core.js`：スキーマ移行・検証、集計、目標比較、JSONマージ。ブラウザとNode.jsで利用
 - `sw.js`：アプリ本体のオフラインキャッシュ
 - `manifest.webmanifest`・アイコン：ホーム画面追加
 - `scripts/preview.mjs`：ローカルプレビュー
 - `scripts/import_rounds.py`：JSONと既存Excelをマージして分析ブックを生成
 - `requirements-excel.txt`：Excel用Pythonライブラリ
-- `tests/`：Node.jsとPythonの回帰テスト
+- `tests/`：Node.jsとPythonの回帰テスト。`tests/fixtures/penalty-cases.json` は色分け・原因タグ・Excelの整合性を確認する共通の合成データ
 - `docs/`：利用・開発・Excel・データ仕様の詳細ドキュメント
 
 ## ローカルのデータファイル
@@ -84,3 +85,11 @@ PWAの配信ファイルを更新した場合は `sw.js` のキャッシュ名�
 JSONは `backups/`、Excelは `outputs/` に保存します。両フォルダ全体とJSON・Excelファイルは `.gitignore` の対象です。日付・ゴルフ場名・プレー記録を含むため、公開リポジトリには追加しないでください。
 
 Excel取り込みのセットアップは[Excelへの取り込み・更新手順](excel.md)を参照してください。
+
+## 変更時の責務
+
+画面のHTMLは `roundnote-views.js`、操作に伴う保存・画面切り替えは `app.js` で扱います。クリック処理は優先順のある機能別ハンドラーとアクション表に分けています。
+
+スコアカードの強調はCoreの `scorecardWarning` / `scorecardTone`、振り返りは `reviewHole` / `reviewRound` を使用します。色分けと原因タグは内部で同じ閾値を使います。未入力や入力矛盾のときに原因タグを付けない条件は、振り返り側で保持しています。画面とPNGの色分けには同じCore関数を使用します。
+
+PythonはブラウザのJavaScriptを実行せずにExcelを生成するため、罰打補正・区間別判定の実装を持ちます。判定を変更する際は共通fixtureの期待値も確認し、JavaScriptとPythonの両方のテストを実行してください。fixtureは個人の記録ではありません。
